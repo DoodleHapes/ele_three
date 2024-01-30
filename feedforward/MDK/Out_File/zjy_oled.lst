@@ -1,0 +1,119 @@
+C251 COMPILER V5.60.0,  zjy_oled                                                           07/09/23  23:34:44  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE zjy_oled
+OBJECT MODULE PLACED IN .\Out_File\zjy_oled.obj
+COMPILER INVOKED BY: C:\keil MCK\C251\BIN\C251.EXE zjy_oled.c XSMALL INTR2 WARNINGLEVEL(3) OPTIMIZE(0,SPEED) BROWSE INCD
+                    -IR(..\..\Libraries\libraries;..\..\Libraries\seekfree_libraries;..\..\Libraries\seekfree_peripheral;..\CODE;..\USER\inc;
+                    -..\USER\src) DEBUG PRINT(.\Out_File\zjy_oled.lst) TABS(2) OBJECT(.\Out_File\zjy_oled.obj) 
+
+stmt  level    source
+
+    1          #include "oled.h"
+*** ERROR C318 IN LINE 1 OF zjy_oled.c: can't open file 'oled.h'
+    2          #include "oledfont.h"    
+*** ERROR C318 IN LINE 2 OF zjy_oled.c: can't open file 'oledfont.h'
+    3          
+    4          //OLED的显存
+    5          //存放格式如下.
+    6          //[0]0 1 2 3 ... 127  
+    7          //[1]0 1 2 3 ... 127  
+    8          //[2]0 1 2 3 ... 127  
+    9          //[3]0 1 2 3 ... 127  
+   10          //[4]0 1 2 3 ... 127  
+   11          //[5]0 1 2 3 ... 127  
+   12          //[6]0 1 2 3 ... 127  
+   13          //[7]0 1 2 3 ... 127         
+   14          void delay_ms(unsigned int ms)
+   15          {                         
+   16   1        unsigned int a;
+   17   1        while(ms)
+   18   1        {
+   19   2          a=1800;
+   20   2          while(a--);
+   21   2          ms--;
+   22   2        }
+   23   1        return;
+   24   1      }
+   25          
+   26          //反显函数
+   27          void OLED_ColorTurn(u8 i)
+*** ERROR C25 IN LINE 27 OF zjy_oled.c: syntax error near 'i'
+   28          {
+*** WARNING C35 IN LINE 28 OF zjy_oled.c: 'OLED_ColorTurn': uses old-style declarator
+   29   1        if(i==0)
+*** ERROR C67 IN LINE 29 OF zjy_oled.c: 'i': undefined identifier
+   30   1          {
+   31   2            OLED_WR_Byte(0xA6,OLED_CMD);//正常显示
+*** ERROR C67 IN LINE 31 OF zjy_oled.c: 'OLED_CMD': undefined identifier
+*** WARNING C140 IN LINE 31 OF zjy_oled.c: 'OLED_WR_Byte' undefined; assuming 'extern int OLED_WR_Byte()'
+*** WARNING C95 IN LINE 31 OF zjy_oled.c: 'OLED_WR_Byte': too many actual parameters
+   32   2          }
+   33   1        if(i==1)
+*** ERROR C67 IN LINE 33 OF zjy_oled.c: 'i': undefined identifier
+   34   1          {
+   35   2            OLED_WR_Byte(0xA7,OLED_CMD);//反色显示
+*** ERROR C67 IN LINE 35 OF zjy_oled.c: 'OLED_CMD': undefined identifier
+*** WARNING C95 IN LINE 35 OF zjy_oled.c: 'OLED_WR_Byte': too many actual parameters
+   36   2          }
+   37   1      }
+*** WARNING C47 IN LINE 27 OF zjy_oled.c: 'u8': unreferenced parameter
+   38          
+   39          //屏幕旋转180度
+   40          void OLED_DisplayTurn(u8 i)
+*** ERROR C25 IN LINE 40 OF zjy_oled.c: syntax error near 'i'
+   41          {
+*** WARNING C35 IN LINE 41 OF zjy_oled.c: 'OLED_DisplayTurn': uses old-style declarator
+   42   1        if(i==0)
+*** ERROR C67 IN LINE 42 OF zjy_oled.c: 'i': undefined identifier
+C251 COMPILER V5.60.0,  zjy_oled                                                           07/09/23  23:34:44  PAGE 2   
+
+   43   1          {
+   44   2            OLED_WR_Byte(0xC8,OLED_CMD);//正常显示
+*** ERROR C67 IN LINE 44 OF zjy_oled.c: 'OLED_CMD': undefined identifier
+*** WARNING C95 IN LINE 44 OF zjy_oled.c: 'OLED_WR_Byte': too many actual parameters
+   45   2            OLED_WR_Byte(0xA1,OLED_CMD);
+*** ERROR C67 IN LINE 45 OF zjy_oled.c: 'OLED_CMD': undefined identifier
+*** WARNING C95 IN LINE 45 OF zjy_oled.c: 'OLED_WR_Byte': too many actual parameters
+   46   2          }
+   47   1        if(i==1)
+*** ERROR C67 IN LINE 47 OF zjy_oled.c: 'i': undefined identifier
+   48   1          {
+   49   2            OLED_WR_Byte(0xC0,OLED_CMD);//反转显示
+*** ERROR C67 IN LINE 49 OF zjy_oled.c: 'OLED_CMD': undefined identifier
+*** WARNING C95 IN LINE 49 OF zjy_oled.c: 'OLED_WR_Byte': too many actual parameters
+   50   2            OLED_WR_Byte(0xA0,OLED_CMD);
+*** ERROR C67 IN LINE 50 OF zjy_oled.c: 'OLED_CMD': undefined identifier
+*** WARNING C95 IN LINE 50 OF zjy_oled.c: 'OLED_WR_Byte': too many actual parameters
+   51   2          }
+   52   1      }
+*** WARNING C47 IN LINE 40 OF zjy_oled.c: 'u8': unreferenced parameter
+   53          
+   54          
+   55          void OLED_WR_Byte(u8 dat,u8 cmd)
+*** ERROR C25 IN LINE 55 OF zjy_oled.c: syntax error near 'dat'
+   56          { 
+*** ERROR C53 IN LINE 56 OF zjy_oled.c: redefinition of 'OLED_WR_Byte': different return types
+   57   1        u8 i;       
+*** ERROR C25 IN LINE 57 OF zjy_oled.c: syntax error near 'i'
+*** WARNING C34 IN LINE 57 OF zjy_oled.c: 'i': missing declaration specifiers
+   58   1        if(cmd)
+*** ERROR C25 IN LINE 58 OF zjy_oled.c: syntax error near 'if'
+   59   1          OLED_DC_Set();
+*** ERROR C42 IN LINE 59 OF zjy_oled.c: 'OLED_DC_Set': not in formal parameter list
+   60   1        else 
+*** ERROR C25 IN LINE 60 OF zjy_oled.c: syntax error near 'else'
+   61   1          OLED_DC_Clr();      
+   62   1        OLED_CS_Clr();
+   63   1        for(i=0;i<8;i++)
+*** ERROR C25 IN LINE 63 OF zjy_oled.c: syntax error near 'for'
+*** ERROR C25 IN LINE 63 OF zjy_oled.c: syntax error near '='
+*** ERROR C25 IN LINE 63 OF zjy_oled.c: syntax error near '<'
+*** ERROR C25 IN LINE 63 OF zjy_oled.c: syntax error near '++'
+   64   1        {       
+   65   1          OLED_SCL_Clr();
+   66   1          if(dat&0x80)
+*** ERROR C25 IN LINE 66 OF zjy_oled.c: syntax error near 'if'
+*** ERROR C7 IN LINE 66 OF zjy_oled.c: compilation aborted
+
+C251 COMPILATION COMPLETE.  12 WARNING(S),  26 ERROR(S)

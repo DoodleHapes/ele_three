@@ -1,0 +1,306 @@
+C251 COMPILER V5.60.0,  zf_gpio                                                            18/11/23  18:44:50  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE zf_gpio
+OBJECT MODULE PLACED IN .\Out_File\zf_gpio.obj
+COMPILER INVOKED BY: C:\keil MCK\C251\BIN\C251.EXE ..\..\Libraries\seekfree_libraries\zf_gpio.c XSMALL INTR2 WARNINGLEVE
+                    -L(3) OPTIMIZE(0,SPEED) BROWSE INCDIR(..\..\Libraries\libraries;..\..\Libraries\seekfree_libraries;..\..\Libraries\seekfr
+                    -ee_peripheral;..\CODE;..\USER\inc;..\USER\src) DEBUG PRINT(.\Out_File\zf_gpio.lst) TABS(2) OBJECT(.\Out_File\zf_gpio.obj
+                    -) 
+
+stmt  level    source
+
+    1          /********************************************************************************************************
+             -*************
+    2           * COPYRIGHT NOTICE
+    3           * Copyright (c) 2020,Öð·É¿Æ¼¼
+    4           * All rights reserved.
+    5           * ¼¼ÊõÌÖÂÛQQÈº£ºÒ»Èº£º179029047(ÒÑÂú)  ¶þÈº£º244861897(ÒÑÂú)  ÈýÈº£º824575535
+    6           *
+    7           * ÒÔÏÂËùÓÐÄÚÈÝ°æÈ¨¾ùÊôÖð·É¿Æ¼¼ËùÓÐ£¬Î´¾­ÔÊÐí²»µÃÓÃÓÚÉÌÒµÓÃÍ¾£¬
+    8           * »¶Ó­¸÷Î»Ê¹ÓÃ²¢´«²¥±¾³ÌÐò£¬ÐÞ¸ÄÄÚÈÝÊ±±ØÐë±£ÁôÖð·É¿Æ¼¼µÄ°æÈ¨ÉùÃ÷¡£
+    9           *
+   10           * @file          gpio
+   11           * @company       ³É¶¼Öð·É¿Æ¼¼ÓÐÏÞ¹«Ë¾
+   12           * @author        Öð·É¿Æ¼¼(QQ790875685)
+   13           * @version       ²é¿´docÄÚversionÎÄ¼þ °æ±¾ËµÃ÷
+   14           * @Software    MDK FOR C251 V5.60
+   15           * @Target core   STC32G12K128
+   16           * @Taobao      https://seekfree.taobao.com/
+   17           * @date          2020-4-14
+   18           ********************************************************************************************************
+             -************/
+   19          
+   20          
+   21          #include "zf_gpio.h"
+   22          
+   23          
+   24          
+   25          #define PxPU_BASE_ADDR  0x7EFE10 
+   26          
+   27          //-------------------------------------------------------------------------------------------------------
+             -------------
+   28          //  @brief      GPIOÉèÖÃÒý½ÅÉÏÀ­µç×èÉèÖÃ
+   29          //  @param      pin         Ñ¡ÔñÒý½Å£¨P0_0-P7_7£©
+   30          //  @param      pull        ÉèÖÃÉÏÏÂÀ­µç×è NOPULL:²»ÉèÖÃ PULLUP:ÉÏÀ­
+   31          //  @return     void
+   32          //  Sample usage:           gpio_pull_set(P0_0,NOPULL);       // ÉèÖÃP0.0Òý½ÅÃ»ÓÐÉÏÏÂÀ­µç×è
+   33          //-------------------------------------------------------------------------------------------------------
+             -------------
+   34          void gpio_pull_set(PIN_enum pin, PULL_enum pull)
+   35          {
+   36   1        if(PULLUP == pull)
+   37   1        {
+   38   2          (*(unsigned char volatile far *)(PxPU_BASE_ADDR + (pin >> 4))) |= (1<<(pin&0x0F));
+   39   2        }
+   40   1        else if(NOPULL == pull)
+   41   1        {
+   42   2          (*(unsigned char volatile far *)(PxPU_BASE_ADDR + (pin >> 4))) &= ~(1<<(pin&0x0F));
+   43   2        }
+   44   1      }
+   45          
+   46          
+   47          
+   48          //-------------------------------------------------------------------------------------------------------
+             -------------
+   49          //  @brief      GPIOÉèÖÃÒý½ÅÄ£Ê½
+   50          //  @param      pin         Ñ¡ÔñÒý½Å£¨P0_0-P5_4£©
+   51          //  @param      mode        Òý½ÅÄ£Ê½ GPIO:×¼Ë«Ïò¿Ú, GPO_PP:ÍÆÍìÊä³ö, GPI_IMPEDANCE:¸ß×èÊäÈë, GPI_OD:¿ªÂ©Ê
+C251 COMPILER V5.60.0,  zf_gpio                                                            18/11/23  18:44:50  PAGE 2   
+
+             -ä³ö
+   52          //  @return     void
+   53          //  Sample usage:           gpio_mode(P0_0,GPIO);       // ÉèÖÃP0.0ÉèÖÃÎªË«ÏòIO
+   54          //-------------------------------------------------------------------------------------------------------
+             -------------
+   55          void gpio_mode(PIN_enum pin, GPIOMODE_enum mode)
+   56          {
+   57   1        if(GPIO == mode)
+   58   1        {
+   59   2          if(0x00 == (pin&0xF0))  //P0
+   60   2          {
+   61   3            P0M1 &= ~(1<<(pin&0xF));
+   62   3            P0M0 &= ~(1<<(pin&0xF));
+   63   3          }
+   64   2          if(0x10 == (pin&0xF0))  //P1
+   65   2          {
+   66   3            P1M1 &= ~(1<<(pin&0xF));
+   67   3            P1M0 &= ~(1<<(pin&0xF));
+   68   3          }
+   69   2          if(0x20 == (pin&0xF0))  //P2
+   70   2          {
+   71   3            P2M1 &= ~(1<<(pin&0xF));
+   72   3            P2M0 &= ~(1<<(pin&0xF));
+   73   3          }
+   74   2          
+   75   2          if(0x30 == (pin&0xF0))  //P3
+   76   2          {
+   77   3            P3M1 &= ~(1<<(pin&0xF));
+   78   3            P3M0 &= ~(1<<(pin&0xF));
+   79   3          }
+   80   2          if(0x40 == (pin&0xF0))  //P4
+   81   2          {
+   82   3            P4M1 &= ~(1<<(pin&0xF));
+   83   3            P4M0 &= ~(1<<(pin&0xF));
+   84   3          }
+   85   2          if(0x50 == (pin&0xF0))  //P5
+   86   2          {
+   87   3            P5M1 &= ~(1<<(pin&0xF));
+   88   3            P5M0 &= ~(1<<(pin&0xF));
+   89   3          }
+   90   2          if(0x60 == (pin&0xF0))  //P5
+   91   2          {
+   92   3            P6M1 &= ~(1<<(pin&0xF));
+   93   3            P6M0 &= ~(1<<(pin&0xF));
+   94   3          }
+   95   2          if(0x70 == (pin&0xF0))  //P5
+   96   2          {
+   97   3            P7M1 &= ~(1<<(pin&0xF));
+   98   3            P7M0 &= ~(1<<(pin&0xF));
+   99   3          }
+  100   2        }
+  101   1        else if(GPO_PP == mode)
+  102   1        {
+  103   2          if(0x00 == (pin&0xF0))  //P0
+  104   2          {
+  105   3            P0M1 &= ~(1<<(pin&0xF));
+  106   3            P0M0 |=  (1<<(pin&0xF));
+  107   3          }
+  108   2          if(0x10 == (pin&0xF0))  //P1
+  109   2          {
+  110   3            P1M1 &= ~(1<<(pin&0xF));
+  111   3            P1M0 |=  (1<<(pin&0xF));
+  112   3          }
+  113   2          if(0x20 == (pin&0xF0))  //P2
+  114   2          {
+  115   3            P2M1 &= ~(1<<(pin&0xF));
+C251 COMPILER V5.60.0,  zf_gpio                                                            18/11/23  18:44:50  PAGE 3   
+
+  116   3            P2M0 |=  (1<<(pin&0xF));
+  117   3          }
+  118   2          
+  119   2          if(0x30 == (pin&0xF0))  //P3
+  120   2          {
+  121   3            P3M1 &= ~(1<<(pin&0xF));
+  122   3            P3M0 |=  (1<<(pin&0xF));
+  123   3          }
+  124   2          if(0x40 == (pin&0xF0))  //P4
+  125   2          {
+  126   3            P4M1 &= ~(1<<(pin&0xF));
+  127   3            P4M0 |=  (1<<(pin&0xF));
+  128   3          }
+  129   2          if(0x50 == (pin&0xF0))  //P5
+  130   2          {
+  131   3            P5M1 &= ~(1<<(pin&0xF));
+  132   3            P5M0 |=  (1<<(pin&0xF));
+  133   3          }
+  134   2          if(0x60 == (pin&0xF0))  //P4
+  135   2          {
+  136   3            P6M1 &= ~(1<<(pin&0xF));
+  137   3            P6M0 |=  (1<<(pin&0xF));
+  138   3          }
+  139   2          if(0x70 == (pin&0xF0))  //P5
+  140   2          {
+  141   3            P7M1 &= ~(1<<(pin&0xF));
+  142   3            P7M0 |=  (1<<(pin&0xF));
+  143   3          }
+  144   2          
+  145   2        }
+  146   1        else if(GPI_IMPEDANCE == mode)
+  147   1        {
+  148   2          if(0x00 == (pin&0xF0))  //P0
+  149   2          {
+  150   3            P0M1 |=  (1<<(pin&0xF));
+  151   3            P0M0 &= ~(1<<(pin&0xF));
+  152   3          }
+  153   2          if(0x10 == (pin&0xF0))  //P1
+  154   2          {
+  155   3            P1M1 |=  (1<<(pin&0xF));
+  156   3            P1M0 &= ~(1<<(pin&0xF));
+  157   3          }
+  158   2          if(0x20 == (pin&0xF0))  //P2
+  159   2          {
+  160   3            P2M1 |=  (1<<(pin&0xF));
+  161   3            P2M0 &= ~(1<<(pin&0xF));
+  162   3          }
+  163   2          
+  164   2          if(0x30 == (pin&0xF0))  //P3
+  165   2          {
+  166   3            P3M1 |=  (1<<(pin&0xF));
+  167   3            P3M0 &= ~(1<<(pin&0xF));
+  168   3          }
+  169   2          if(0x40 == (pin&0xF0))  //P4
+  170   2          {
+  171   3            P4M1 |=  (1<<(pin&0xF));
+  172   3            P4M0 &= ~(1<<(pin&0xF));
+  173   3          }
+  174   2          if(0x50 == (pin&0xF0))  //P5
+  175   2          {
+  176   3            P5M1 |=  (1<<(pin&0xF));
+  177   3            P5M0 &= ~(1<<(pin&0xF));
+  178   3          }
+  179   2          if(0x60 == (pin&0xF0))  //P5
+  180   2          {
+  181   3            P6M1 |=  (1<<(pin&0xF));
+C251 COMPILER V5.60.0,  zf_gpio                                                            18/11/23  18:44:50  PAGE 4   
+
+  182   3            P6M0 &= ~(1<<(pin&0xF));
+  183   3          }
+  184   2          if(0x70 == (pin&0xF0))  //P5
+  185   2          {
+  186   3            P7M1 |=  (1<<(pin&0xF));
+  187   3            P7M0 &= ~(1<<(pin&0xF));
+  188   3          }
+  189   2        }
+  190   1        else if(GPI_OD == mode)
+  191   1        {
+  192   2          if(0x00 == (pin&0xF0))  //P0
+  193   2          {
+  194   3            P0M1 |= (1<<(pin&0xF));
+  195   3            P0M0 |= (1<<(pin&0xF));
+  196   3          }
+  197   2          if(0x10 == (pin&0xF0))  //P1
+  198   2          {
+  199   3            P1M1 |= (1<<(pin&0xF));
+  200   3            P1M0 |= (1<<(pin&0xF));
+  201   3          }
+  202   2          if(0x20 == (pin&0xF0))  //P2
+  203   2          {
+  204   3            P2M1 |= (1<<(pin&0xF));
+  205   3            P2M0 |= (1<<(pin&0xF));
+  206   3          }
+  207   2          
+  208   2          if(0x30 == (pin&0xF0))  //P3
+  209   2          {
+  210   3            P3M1 |= (1<<(pin&0xF));
+  211   3            P3M0 |= (1<<(pin&0xF));
+  212   3          }
+  213   2          if(0x40 == (pin&0xF0))  //P4
+  214   2          {
+  215   3            P4M1 |= (1<<(pin&0xF));
+  216   3            P4M0 |= (1<<(pin&0xF));
+  217   3          }
+  218   2          if(0x50 == (pin&0xF0))  //P5
+  219   2          {
+  220   3            P5M1 |= (1<<(pin&0xF));
+  221   3            P5M0 |= (1<<(pin&0xF));
+  222   3          }
+  223   2          if(0x60 == (pin&0xF0))  //P5
+  224   2          {
+  225   3            P6M1 |= (1<<(pin&0xF));
+  226   3            P6M0 |= (1<<(pin&0xF));
+  227   3          }
+  228   2          if(0x70 == (pin&0xF0))  //P5
+  229   2          {
+  230   3            P7M1 |= (1<<(pin&0xF));
+  231   3            P7M0 |= (1<<(pin&0xF));
+  232   3          }
+  233   2        }
+  234   1      }
+  235          
+  236          
+  237          
+  238          void gpio_init(void)
+  239          {
+  240   1        gpio_pull_set(P7_5,PULLUP);
+  241   1        gpio_pull_set(P2_0,PULLUP);
+  242   1        gpio_pull_set(P7_6,PULLUP);
+  243   1        gpio_pull_set(P2_1,PULLUP);
+  244   1        gpio_pull_set(P4_4,PULLUP);
+  245   1        gpio_pull_set(P4_0,PULLUP);
+  246   1        gpio_pull_set(P6_6,PULLUP);
+  247   1        gpio_mode(P7_5,GPI_OD);
+C251 COMPILER V5.60.0,  zf_gpio                                                            18/11/23  18:44:50  PAGE 5   
+
+  248   1        gpio_mode(P2_0,GPI_OD);
+  249   1        gpio_mode(P7_6,GPI_OD);
+  250   1        gpio_mode(P2_1,GPI_OD);
+  251   1        gpio_mode(P4_4,GPI_OD);
+  252   1        gpio_mode(P4_0,GPI_OD);
+  253   1        gpio_mode(P6_6,GPI_OD);
+  254   1      }
+  255          
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =      2621     ------
+  ecode size           =    ------     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =    ------     ------
+  xdata-const size     =    ------     ------
+  edata size           =         8     ------
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =    ------     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

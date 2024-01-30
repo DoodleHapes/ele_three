@@ -1,0 +1,1034 @@
+C251 COMPILER V5.60.0,  SEEKFREE_OLED                                                      09/12/23  22:21:25  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE SEEKFREE_OLED
+OBJECT MODULE PLACED IN .\Out_File\SEEKFREE_OLED.obj
+COMPILER INVOKED BY: C:\keil MCK\C251\BIN\C251.EXE ..\..\Libraries\seekfree_peripheral\SEEKFREE_OLED.c XSMALL INTR2 WARN
+                    -INGLEVEL(3) OPTIMIZE(0,SPEED) BROWSE INCDIR(..\..\Libraries\libraries;..\..\Libraries\seekfree_libraries;..\..\Libraries
+                    -\seekfree_peripheral;..\CODE;..\USER\inc;..\USER\src) DEBUG PRINT(.\Out_File\SEEKFREE_OLED.lst) TABS(2) OBJECT(.\Out_Fil
+                    -e\SEEKFREE_OLED.obj) 
+
+stmt  level    source
+
+    1          /********************************************************************************************************
+             -*************
+    2           * COPYRIGHT NOTICE
+    3           * Copyright (c) 2018,Öð·É¿Æ¼¼
+    4           * All rights reserved.
+    5           * ¼¼ÊõÌÖÂÛQQÈº£ºÒ»Èº£º179029047(ÒÑÂú)  ¶þÈº£º244861897
+    6           *
+    7           * ÒÔÏÂËùÓÐÄÚÈÝ°æÈ¨¾ùÊôÖð·É¿Æ¼¼ËùÓÐ£¬Î´¾­ÔÊÐí²»µÃÓÃÓÚÉÌÒµÓÃÍ¾£¬
+    8           * »¶Ó­¸÷Î»Ê¹ÓÃ²¢´«²¥±¾³ÌÐò£¬ÐÞ¸ÄÄÚÈÝÊ±±ØÐë±£ÁôÖð·É¿Æ¼¼µÄ°æÈ¨ÉùÃ÷¡£
+    9           *
+   10           * @file          OLED
+   11           * @company       ³É¶¼Öð·É¿Æ¼¼ÓÐÏÞ¹«Ë¾
+   12           * @author        Öð·É¿Æ¼¼(QQ3184284598)
+   13           * @version       ²é¿´docÄÚversionÎÄ¼þ °æ±¾ËµÃ÷
+   14           * @Software    MDK FOR C251 V5.60
+   15           * @Target core   STC32G12K128
+   16           * @Taobao      https://seekfree.taobao.com/
+   17           * @date          2019-04-30
+   18           * @note    
+   19                    ½ÓÏß¶¨Òå£º
+   20                    ------------------------------------ 
+   21                    OLEDÒº¾§    µ¥Æ¬»ú                        
+   22                    D0          ²é¿´SEEKFREE_OLED.hÎÄ¼þÄÚµÄOLED_SCL_PIN   ºê¶¨Òå
+   23                    D1          ²é¿´SEEKFREE_OLED.hÎÄ¼þÄÚµÄOLED_SDA_PIN   ºê¶¨Òå            
+   24                    RES         ²é¿´SEEKFREE_OLED.hÎÄ¼þÄÚµÄOLED_RST_PIN   ºê¶¨Òå    
+   25                    DC          ²é¿´SEEKFREE_OLED.hÎÄ¼þÄÚµÄOLED_DC_PIN    ºê¶¨Òå
+   26                    CS          ²é¿´SEEKFREE_OLED.hÎÄ¼þÄÚµÄOLED_CS_PIN    ºê¶¨Òå
+   27                    ------------------------------------ 
+   28           ********************************************************************************************************
+             -************/
+   29          
+   30          #include "zf_spi.h"
+   31          #include "zf_delay.h"
+   32          #include "SEEKFREE_FONT.h"
+   33          #include "SEEKFREE_PRINTF.h"
+   34          #include "SEEKFREE_OLED.h"
+   35          
+   36          //-------------------------------------------------------------------------------------------------------
+             -------------
+   37          //  ÒÔÏÂº¯ÊýÊÇÊ¹ÓÃÈí¼þSPIÍ¨ÐÅ£¬Ïà±È½ÏÓ²¼þSPI£¬Èí¼þSPIÒý½Å¸ü¼ÓÁé»î£¬¿ÉÒÔÊ¹ÓÃÈÎÒâÆÕÍ¨IO
+   38          //-------------------------------------------------------------------------------------------------------
+             -------------
+   39          
+   40          //-------------------------------------------------------------------------------------------------------
+             -------------
+   41          //  @brief      ÄÚ²¿µ÷ÓÃ£¬ÓÃ»§ÎÞÐè¹ØÐÄ
+   42          //  @param      void        
+   43          //  @return             
+   44          //  @since      v1.0
+   45          //  Sample usage:               
+   46          //-------------------------------------------------------------------------------------------------------
+             -------------
+   47          void oled_wrdat(uint8 dat)
+   48          {
+   49   1        uint8 i=8;
+   50   1        
+C251 COMPILER V5.60.0,  SEEKFREE_OLED                                                      09/12/23  22:21:25  PAGE 2   
+
+   51   1          OLED_CS(0); //Ê¹ÄÜÐÅºÅ¶Ë£¬À­µÍÊ±Õý³£Ê¹ÓÃ
+   52   1        OLED_DC(1);
+   53   1        OLED_SCL(0);
+   54   1        while(i--)
+   55   1        {
+   56   2            if(dat&0x80){OLED_SDA(1);}
+   57   2            else{OLED_SDA(0);}
+   58   2            OLED_SCL(1);
+   59   2          
+   60   2            OLED_SCL(0);
+   61   2            dat<<=1;
+   62   2        }
+   63   1          OLED_CS(1); //Ê¹ÄÜÐÅºÅ¶Ë£¬À­µÍÊ±Õý³£Ê¹ÓÃ
+   64   1      }
+   65          
+   66          //-------------------------------------------------------------------------------------------------------
+             -------------
+   67          //  @brief      ÄÚ²¿µ÷ÓÃ£¬ÓÃ»§ÎÞÐè¹ØÐÄ
+   68          //  @param      void        
+   69          //  @return             
+   70          //  @since      v1.0
+   71          //  Sample usage:               
+   72          //-------------------------------------------------------------------------------------------------------
+             -------------
+   73          //void oled_wr6dat(uint8 dat)
+   74          //{
+   75          //  uint8 i=6;
+   76          //    
+   77          //  OLED_CS(0); //Ê¹ÄÜÐÅºÅ¶Ë£¬À­µÍÊ±Õý³£Ê¹ÓÃ
+   78          //  OLED_DC(1);
+   79          //  OLED_SCL(0);
+   80          //  while(i--)
+   81          //  {
+   82          //    if(dat&0x80){OLED_SDA(1);}
+   83          //    else{OLED_SDA(0);}
+   84          //    OLED_SCL(1);
+   85          //    OLED_SCL(0);
+   86          //    dat<<=1;
+   87          //  }
+   88          //    OLED_CS(1); //Ê¹ÄÜÐÅºÅ¶Ë£¬À­µÍÊ±Õý³£Ê¹ÓÃ
+   89          //}
+   90          
+   91          //-------------------------------------------------------------------------------------------------------
+             -------------
+   92          //  @brief      ÄÚ²¿µ÷ÓÃ£¬ÓÃ»§ÎÞÐè¹ØÐÄ
+   93          //  @param      void        
+   94          //  @return             
+   95          //  @since      v1.0
+   96          //  Sample usage:               
+   97          //-------------------------------------------------------------------------------------------------------
+             -------------
+   98          void oled_wrcmd(uint8 cmd)
+   99          {
+  100   1        uint8 i=8;
+  101   1          
+  102   1        OLED_CS(0); //Ê¹ÄÜÐÅºÅ¶Ë£¬À­µÍÊ±Õý³£Ê¹ÓÃ
+  103   1        OLED_DC(0);
+  104   1        OLED_SCL(0);;
+  105   1        
+  106   1        while(i--)
+  107   1        {
+  108   2          if(cmd&0x80){OLED_SDA(1);}
+  109   2          else{OLED_SDA(0);}
+  110   2          OLED_SCL(1);
+  111   2          
+  112   2          OLED_SCL(0);
+C251 COMPILER V5.60.0,  SEEKFREE_OLED                                                      09/12/23  22:21:25  PAGE 3   
+
+  113   2          cmd<<=1;
+  114   2        }
+  115   1          OLED_CS(1); //Ê¹ÄÜÐÅºÅ¶Ë£¬À­µÍÊ±Õý³£Ê¹ÓÃ
+  116   1      }
+  117          
+  118          //-------------------------------------------------------------------------------------------------------
+             -------------
+  119          //  @brief      ÄÚ²¿µ÷ÓÃ£¬ÓÃ»§ÎÞÐè¹ØÐÄ
+  120          //  @param      void        
+  121          //  @return             
+  122          //  @since      v1.0
+  123          //  Sample usage:               
+  124          //-------------------------------------------------------------------------------------------------------
+             -------------
+  125          void oled_hexascii(uint16 hex,int8 * Print)
+  126          {
+  127   1        uint8 hexcheck ;
+  128   1        uint8 TEMP ;
+  129   1        TEMP = 6 ;
+  130   1        Print[TEMP ]='\0';
+  131   1        while(TEMP)
+  132   1        {
+  133   2            TEMP -- ;
+  134   2            hexcheck  =  hex%10 ;
+  135   2            hex   /=10 ;
+  136   2            Print[TEMP ]  = hexcheck + 0x30 ;
+  137   2        }
+  138   1        
+  139   1      }
+  140          
+  141          //-------------------------------------------------------------------------------------------------------
+             -------------
+  142          //  @brief      OLED³õÊ¼»¯º¯Êý
+  143          //  @param      NULL
+  144          //  @return     void
+  145          //  @since      v1.0
+  146          //  Sample usage:     
+  147          //-------------------------------------------------------------------------------------------------------
+             -------------
+  148          void oled_init(void)
+  149          {
+  150   1        
+  151   1          OLED_CS(1);
+  152   1        OLED_SCL(1);
+  153   1        
+  154   1        OLED_RST(0);
+  155   1        delay_ms(50);
+  156   1        OLED_RST(1);
+  157   1        
+  158   1        oled_wrcmd(0xae);//--turn off oled panel
+  159   1        oled_wrcmd(0x00);//---set low column address
+  160   1        oled_wrcmd(0x10);//---set high column address
+  161   1        oled_wrcmd(0x40);//--set start line address  Set Mapping RAM Display Start Line (0x00~0x3F)
+  162   1        oled_wrcmd(0x81);//--set contrast control register
+  163   1        oled_wrcmd(Brightness); // Set SEG Output Current Brightness
+  164   1          
+  165   1      #if (0 == OLED_DISPLAY_DIR)
+  166   1        oled_wrcmd(0xa1);//--Set SEG/Column Mapping     0xa0×óÓÒ·´ÖÃ 0xa1Õý³£
+  167   1        oled_wrcmd(0xc8);//Set COM/Row Scan Direction   0xc0ÉÏÏÂ·´ÖÃ 0xc8Õý³£
+  168   1      #else
+                   oled_wrcmd(0xa0);//--Set SEG/Column Mapping     0xa0×óÓÒ·´ÖÃ 0xa1Õý³£
+                 oled_wrcmd(0xc0);//Set COM/Row Scan Direction   0xc0ÉÏÏÂ·´ÖÃ 0xc8Õý³£
+               #endif
+  172   1          
+  173   1        oled_wrcmd(0xa6);//--set normal display
+  174   1        oled_wrcmd(0xa8);//--set multiplex ratio(1 to 64)
+C251 COMPILER V5.60.0,  SEEKFREE_OLED                                                      09/12/23  22:21:25  PAGE 4   
+
+  175   1        oled_wrcmd(0x3f);//--1/64 duty
+  176   1        oled_wrcmd(0xd3);//-set display offset  Shift Mapping RAM Counter (0x00~0x3F)
+  177   1        oled_wrcmd(0x00);//-not offset
+  178   1        oled_wrcmd(0xd5);//--set display clock divide ratio/oscillator frequency
+  179   1        oled_wrcmd(0x80);//--set divide ratio, Set Clock as 100 Frames/Sec
+  180   1        oled_wrcmd(0xd9);//--set pre-charge period
+  181   1        oled_wrcmd(0xf1);//Set Pre-Charge as 15 Clocks & Discharge as 1 Clock
+  182   1        oled_wrcmd(0xda);//--set com pins hardware configuration
+  183   1        oled_wrcmd(0x12);
+  184   1        oled_wrcmd(0xdb);//--set vcomh
+  185   1        oled_wrcmd(0x40);//Set VCOM Deselect Level
+  186   1        oled_wrcmd(0x20);//-Set Page Addressing Mode (0x00/0x01/0x02)
+  187   1        oled_wrcmd(0x02);//
+  188   1        oled_wrcmd(0x8d);//--set Charge Pump enable/disable
+  189   1        oled_wrcmd(0x14);//--set(0x10) disable
+  190   1        oled_wrcmd(0xa4);// Disable Entire Display On (0xa4/0xa5)
+  191   1        oled_wrcmd(0xa6);// Disable Inverse Display On (0xa6/a7)
+  192   1        oled_wrcmd(0xaf);//--turn on oled panel
+  193   1        oled_fill(0x00);  //³õÊ¼ÇåÆÁ
+  194   1        oled_set_pos(0,0);
+  195   1      }
+  196          
+  197          //-------------------------------------------------------------------------------------------------------
+             -------------
+  198          //  @brief      OLEDÏÔÊ¾×ø±êÉèÖÃ
+  199          //  @param      x     xÖá×ø±êÉèÖÃ0-127
+  200          //  @param      y           yÖá×ø±êÉèÖÃ0-7
+  201          //  @return     void
+  202          //  @since      v1.0
+  203          //  Sample usage:     
+  204          //-------------------------------------------------------------------------------------------------------
+             -------------
+  205          void oled_set_pos(uint8 x, uint8 y)
+  206          {
+  207   1          oled_wrcmd((uint8)(0xb0+y));
+  208   1          oled_wrcmd((uint8)(((x&0xf0)>>4)|0x10));
+  209   1          oled_wrcmd((uint8)((x&0x0f)|0x00));
+  210   1      }
+  211          
+  212          //-------------------------------------------------------------------------------------------------------
+             -------------
+  213          //  @brief      OLEDÇåÆÁº¯Êý
+  214          //  @param      bmp_data  Ìî³äÑÕÉ«Ñ¡×Å(0x00 or 0xff)
+  215          //  @return     void
+  216          //  @since      v1.0
+  217          //  Sample usage:     
+  218          //-------------------------------------------------------------------------------------------------------
+             -------------
+  219          void oled_fill(uint8 bmp_data)
+  220          {
+  221   1        uint8 y,x;
+  222   1        
+  223   1        for(y=0;y<8;y++)
+  224   1        {
+  225   2          oled_wrcmd((uint8)(0xb0+y));
+  226   2          oled_wrcmd((uint8)(0x01));
+  227   2          oled_wrcmd((uint8)(0x10));
+  228   2          for(x=0;x<X_WIDTH;x++)  oled_wrdat(bmp_data); 
+  229   2        }
+  230   1      }
+  231          
+  232          
+  233          void oled_clear(void)     
+  234          {
+  235   1        oled_fill(0x00);
+  236   1      }
+C251 COMPILER V5.60.0,  SEEKFREE_OLED                                                      09/12/23  22:21:25  PAGE 5   
+
+  237          
+  238          
+  239          //-------------------------------------------------------------------------------------------------------
+             -------------
+  240          //  @brief      OLED¿ØÖÆÒ»¸ö×ø±êÏÂ8¸öÏñËØµÄµãÁÁÓëÏ¨Ãð
+  241          //  @param      x     xÖá×ø±êÉèÖÃ0-127
+  242          //  @param      y           yÖá×ø±êÉèÖÃ0-7
+  243          //  @return     void
+  244          //  @since      v1.0
+  245          //  Sample usage:     oled_putpixel(0,0,0xff);//½«0,0×ø±ê 8¸öµãÈ«²¿µãÁÁ
+  246          //  Sample usage:     oled_putpixel(0,0,0x01);//½«0,0×ø±ê ×îµÍÎ»µãÁÁÆäÓà7¸öÏ¨Ãð
+  247          //  @note                   Í¬Àí¿ÉÒÔÈÎÒâ¿ØÖÆÒ»¸ö×ø±êÏÂ8¸öÏñËØµÄµãÁÁÓëÏ¨Ãð
+  248          //-------------------------------------------------------------------------------------------------------
+             -------------
+  249          void oled_putpixel(uint8 x,uint8 y,uint8 data1)
+  250          {
+  251   1        oled_set_pos(x,y);
+  252   1          oled_wrcmd((uint8)(0xb0+y));
+  253   1        oled_wrcmd((uint8)(((x&0xf0)>>4)|0x10));
+  254   1        oled_wrcmd((uint8)((x&0x0f)|0x00));
+  255   1        oled_wrdat(data1);
+  256   1      }
+  257          
+  258          //-------------------------------------------------------------------------------------------------------
+             -------------
+  259          //  @brief      OLED¹Ø±ÕÒ»¸ö×ø±êËùÓÐÁÁµã
+  260          //  @param      x     xÖá×ø±êÉèÖÃ0-127
+  261          //  @param      y           yÖá×ø±êÉèÖÃ0-7
+  262          //  @return     void
+  263          //  @since      v1.0
+  264          //  Sample usage:     
+  265          //-------------------------------------------------------------------------------------------------------
+             -------------
+  266          void oled_clrpixel(uint8 x,uint8 y)
+  267          {
+  268   1        oled_set_pos(x,y);
+  269   1          oled_wrcmd((uint8)(0xb0+y));
+  270   1        oled_wrcmd((uint8)(((x&0xf0)>>4)|0x10));
+  271   1        oled_wrcmd((uint8)((x&0x0f)|0x00));
+  272   1        oled_wrdat(0x00);
+  273   1      }
+  274          
+  275          
+  276          //-------------------------------------------------------------------------------------------------------
+             -------------
+  277          //  @brief      OLEDÏÔÊ¾×Ö·û´®(6*8×ÖÌå)
+  278          //  @param      x     xÖá×ø±êÉèÖÃ0-127
+  279          //  @param      y           yÖá×ø±êÉèÖÃ0-7
+  280          //  @param      ch[]        ×Ö·û´®
+  281          //  @return     void
+  282          //  @since      v1.0
+  283          //  Sample usage:     
+  284          //-------------------------------------------------------------------------------------------------------
+             -------------
+  285          void oled_p6x8str(uint8 x,uint8 y,const int8 ch[])
+  286          {
+  287   1        uint8 c=0,i=0,j=0;
+  288   1        while (ch[j]!='\0')
+  289   1        {
+  290   2            c =ch[j]-32;
+  291   2            if(x>126){x=0;y++;}
+  292   2            oled_set_pos(x,y);
+  293   2            for(i=0;i<6;i++)  oled_wrdat(oled_6x8[c][i]);
+  294   2            x+=6;
+  295   2            j++;
+  296   2        }
+C251 COMPILER V5.60.0,  SEEKFREE_OLED                                                      09/12/23  22:21:25  PAGE 6   
+
+  297   1      }
+  298          
+  299          
+  300          
+  301          //-------------------------------------------------------------------------------------------------------
+             -------------
+  302          //  @brief      OLEDÏÔÊ¾32Î»ÓÐ·ûºÅ(È¥³ýÕûÊý²¿·ÖÎÞÐ§µÄ0)
+  303          //  @param      x     xÖá×ø±êÉèÖÃ0-127
+  304          //  @param      y           yÖá×ø±êÉèÖÃ0-7
+  305          //  @param      dat         ÐèÒªÏÔÊ¾µÄ±äÁ¿£¬Êý¾ÝÀàÐÍuint32
+  306          //  @param      num         ÐèÒªÏÔÊ¾µÄÎ»Êý ×î¸ß10Î»  ²»°üº¬Õý¸ººÅ
+  307          //  @return     void
+  308          //  @since      v1.0
+  309          //  Sample usage:           oled_printf_int32(0,0,x,5);//x¿ÉÒÔÎªint32 uint16 int16 uint8 int8ÀàÐÍ
+  310          //  Sample usage:           ¸ºÊý»áÏÔÊ¾Ò»¸ö ¡®-¡¯ºÅ   ÕýÊýÏÔÊ¾Ò»¸ö¿Õ¸ñ
+  311          //-------------------------------------------------------------------------------------------------------
+             -------------
+  312          void oled_printf_int32(uint16 x,uint16 y,int32 dat,uint8 num)
+  313          {
+  314   1          int8    buff[34];
+  315   1          uint8   length;
+  316   1          
+  317   1          if(10<num)      num = 10;
+  318   1          
+  319   1          num++;
+  320   1          if(0>dat)   length = zf_sprintf( &buff[0],"%d",dat);//¸ºÊý
+  321   1          else
+  322   1          {
+  323   2              buff[0] = ' ';
+  324   2              length = zf_sprintf( &buff[1],"%d",dat);
+  325   2              length++;
+  326   2          }
+  327   1          while(length < num)
+  328   1          {
+  329   2              buff[length] = ' ';
+  330   2              length++;
+  331   2          }
+  332   1          buff[num] = '\0';
+  333   1          
+  334   1          oled_p6x8str((uint8)x, (uint8)y, (int *)buff);  //ÏÔÊ¾Êý×Ö
+  335   1      }
+  336          
+  337          //-------------------------------------------------------------------------------------------------------
+             -------------
+  338          //  @brief      OLEDÏÔÊ¾¸¡µãÊý(È¥³ýÕûÊý²¿·ÖÎÞÐ§µÄ0)
+  339          //  @param      x     xÖá×ø±êÉèÖÃ0-127
+  340          //  @param      y           yÖá×ø±êÉèÖÃ0-7
+  341          //  @param      dat         ÐèÒªÏÔÊ¾µÄ±äÁ¿£¬Êý¾ÝÀàÐÍfloat»òdouble
+  342          //  @param      num         ÕûÊýÎ»ÏÔÊ¾³¤¶È   ×î¸ß10Î»  
+  343          //  @param      pointnum    Ð¡ÊýÎ»ÏÔÊ¾³¤¶È   ×î¸ß6Î»
+  344          //  @return     void
+  345          //  @since      v1.0
+  346          //  Sample usage:           oled_printf_float(0,0,x,2,3);//ÏÔÊ¾¸¡µãÊý   ÕûÊýÏÔÊ¾2Î»   Ð¡ÊýÏÔÊ¾ÈýÎ»
+  347          //  @note                   ÌØ±ð×¢Òâµ±·¢ÏÖÐ¡Êý²¿·ÖÏÔÊ¾µÄÖµÓëÄãÐ´ÈëµÄÖµ²»Ò»ÑùµÄÊ±ºò£¬
+  348          //                          ¿ÉÄÜÊÇÓÉÓÚ¸¡µãÊý¾«¶È¶ªÊ§ÎÊÌâµ¼ÖÂµÄ£¬Õâ²¢²»ÊÇÏÔÊ¾º¯ÊýµÄÎÊÌâ£¬
+  349          //                          ÓÐ¹ØÎÊÌâµÄÏêÇé£¬Çë×ÔÐÐ°Ù¶ÈÑ§Ï°   ¸¡µãÊý¾«¶È¶ªÊ§ÎÊÌâ¡£
+  350          //                          ¸ºÊý»áÏÔÊ¾Ò»¸ö ¡®-¡¯ºÅ   ÕýÊýÏÔÊ¾Ò»¸ö¿Õ¸ñ
+  351          //-------------------------------------------------------------------------------------------------------
+             -------------
+  352          void oled_printf_float(uint16 x,uint16 y,double dat,uint8 num,uint8 pointnum)
+  353          {
+  354   1          uint8   length;
+  355   1        int8    buff[34];
+  356   1        int8    start,end,point;
+  357   1      
+  358   1        if(6<pointnum)  pointnum = 6;
+C251 COMPILER V5.60.0,  SEEKFREE_OLED                                                      09/12/23  22:21:25  PAGE 7   
+
+  359   1          if(10<num)      num = 10;
+  360   1              
+  361   1          if(0>dat)   length = zf_sprintf( &buff[0],"%f",dat);//¸ºÊý
+  362   1          else
+  363   1          {
+  364   2              length = zf_sprintf( &buff[1],"%f",dat);
+  365   2              length++;
+  366   2          }
+  367   1          point = length - 7;         //¼ÆËãÐ¡ÊýµãÎ»ÖÃ
+  368   1          start = point - num - 1;    //¼ÆËãÆðÊ¼Î»
+  369   1          end = point + pointnum + 1; //¼ÆËã½áÊøÎ»
+  370   1          while(0>start)//ÕûÊýÎ»²»¹»  Ä©Î²Ó¦¸ÃÌî³ä¿Õ¸ñ
+  371   1          {
+  372   2              buff[end] = ' ';
+  373   2              end++;
+  374   2              start++;
+  375   2          }
+  376   1          
+  377   1          if(0>dat)   buff[start] = '-';
+  378   1          else        buff[start] = ' ';
+  379   1          
+  380   1          buff[end] = '\0';
+  381   1          
+  382   1          oled_p6x8str((uint8)x, (uint8)y, (int8 *)buff); //ÏÔÊ¾Êý×Ö
+  383   1      }
+  384          
+  385          
+  386          
+  387          //-------------------------------------------------------------------------------------------------------
+             -------------
+  388          //  @brief      OLEDÏÔÊ¾Í¼Ïñ
+  389          //  @param      high      Í¼Ïñ¸ß¶È
+  390          //  @param      width     Í¼Ïñ¿í¶È
+  391          //  @param      *p        Í¼ÏñµØÖ·£¨Êý×é£©
+  392          //  @param      value     ¶þÖµ»¯·§Öµ
+  393          //  @return     void
+  394          //  @since      v1.0
+  395          //  Sample usage: 
+  396          //  @Note       Ê¹ÓÃImage2lcd V3.2Èí¼þÈ¡Ä£   CÓïÑÔÊý×é   Ë®Æ½É¨Ãè   
+  397          //              ¿í¶È¸ß¶È×ÔÐÐÉèÖÃ   ÑÕÉ«·´×ª  256É«
+  398          //-------------------------------------------------------------------------------------------------------
+             -------------
+  399          void oled_dis_bmp(uint16 high, uint16 width, uint8 *p,uint8 value)
+  400          {
+  401   1          uint16 i = 0;
+  402   1        uint16 j = 0;
+  403   1          uint16 temp = 0,temp1 = 0;
+  404   1          uint8 dat = 0;
+  405   1          
+  406   1          
+  407   1          temp1 = high%8;
+  408   1          if(temp1 == 0) temp = high/8;
+  409   1          else           temp = high/8+1;
+  410   1      
+  411   1          for(i=0; i<temp; i++)
+  412   1          {
+  413   2              oled_set_pos((uint8)0,(uint8)i);
+  414   2          
+  415   2              for(j=0; j<width; j++)
+  416   2              {
+  417   3                  dat = 0;
+  418   3                  if( (i<(temp-1)) || !temp1 || (temp1>=1))dat |= (*(p+i*8*width+j+width*0) > value? 1: 0)<<0;
+  419   3                  if( (i<(temp-1)) || !temp1 || (temp1>=2))dat |= (*(p+i*8*width+j+width*1) > value? 1: 0)<<1;
+  420   3                  if( (i<(temp-1)) || !temp1 || (temp1>=3))dat |= (*(p+i*8*width+j+width*2) > value? 1: 0)<<2;
+  421   3                  if( (i<(temp-1)) || !temp1 || (temp1>=4))dat |= (*(p+i*8*width+j+width*3) > value? 1: 0)<<3;
+  422   3                  if( (i<(temp-1)) || !temp1 || (temp1>=5))dat |= (*(p+i*8*width+j+width*4) > value? 1: 0)<<4;
+C251 COMPILER V5.60.0,  SEEKFREE_OLED                                                      09/12/23  22:21:25  PAGE 8   
+
+  423   3                  if( (i<(temp-1)) || !temp1 || (temp1>=6))dat |= (*(p+i*8*width+j+width*5) > value? 1: 0)<<5;
+  424   3                  if( (i<(temp-1)) || !temp1 || (temp1>=7))dat |= (*(p+i*8*width+j+width*6) > value? 1: 0)<<6;
+  425   3                  if( (i<(temp-1)) || !temp1 || (temp1>=8))dat |= (*(p+i*8*width+j+width*7) > value? 1: 0)<<7;
+  426   3                 
+  427   3                  oled_wrdat(dat);
+  428   3              }
+  429   2          }
+  430   1      }
+  431          
+  432          //-------------------------------------------------------------------------------------------------------
+             -------------
+  433          //  @brief      ºº×ÖÏÔÊ¾
+  434          //  @param      x       ºá×ø±ê 0-127
+  435          //  @param      y       ×Ý×ø±ê 0-7
+  436          //  @param      size    È¡Ä£µÄÊ±ºòÉèÖÃµÄºº×Ö×ÖÌå´óÐ¡£¬Ò²¾ÍÊÇÒ»¸öºº×ÖÕ¼ÓÃµÄµãÕó³¤¿íÎª¶àÉÙ¸öµã£¬È¡Ä£µÄÊ±ºòÐ
+             -èÒª³¤¿íÊÇÒ»ÑùµÄ¡£
+  437          //  @param      *p      ÐèÒªÏÔÊ¾µÄºº×ÖÊý×é
+  438          //  @param      len     ÐèÒªÏÔÊ¾¶àÉÙÎ»
+  439          //  @return     void
+  440          //  @since      v1.0
+  441          //  Sample usage:   
+  442          //  @Note       Ê¹ÓÃPCtoLCD2002Èí¼þÈ¡Ä£       ÒõÂë¡¢ÖðÐÐÊ½¡¢Ë³Ïò   16*16
+  443          //-------------------------------------------------------------------------------------------------------
+             -------------
+  444          void oled_print_chinese(uint8 x, uint8 y, uint8 size, const uint8 *p, uint8 len)
+  445          {
+  446   1          uint16 i,j,k;
+  447   1          
+  448   1          for(i=0; i<len; i++)
+  449   1          {
+  450   2              for(j=0; j<(size/8); j++)
+  451   2              {
+  452   3                  oled_set_pos((uint8)(x+i*size), (uint8)(y+j));
+  453   3                  for(k=0; k<16; k++)
+  454   3                  {
+  455   4                      oled_wrdat(*p);
+  456   4                      p++;
+  457   4                  }
+  458   3              }
+  459   2          }
+  460   1      }
+  461          
+  462          
+  463          //-------------------------------------------------------------------------------------------------------
+             -------------
+  464          //  ÒÔÏÂº¯ÊýÊÇÊ¹ÓÃÓ²¼þSPIÍ¨ÐÅ£¬Ïà±È½ÏÈí¼þIIC£¬ËÙ¶È±ÈÈí¼þIIC¿ì¡£
+  465          //-------------------------------------------------------------------------------------------------------
+             -------------
+  466          
+  467          //-------------------------------------------------------------------------------------------------------
+             -------------
+  468          //  @brief      ÄÚ²¿µ÷ÓÃ£¬ÓÃ»§ÎÞÐè¹ØÐÄ
+  469          //  @param      void        
+  470          //  @return             
+  471          //  @since      v1.0
+  472          //  Sample usage:               
+  473          //-------------------------------------------------------------------------------------------------------
+             -------------
+  474          void oled_wrdat_spi(uint8 dat)
+  475          {
+  476   1          OLED_SPI_CS(0); //Ê¹ÄÜÐÅºÅ¶Ë£¬À­µÍÊ±Õý³£Ê¹ÓÃ
+  477   1        OLED_SPI_DC(1);
+  478   1        spi_mosi(dat);
+  479   1          OLED_SPI_CS(1); //Ê¹ÄÜÐÅºÅ¶Ë£¬À­µÍÊ±Õý³£Ê¹ÓÃ
+  480   1      
+  481   1        
+C251 COMPILER V5.60.0,  SEEKFREE_OLED                                                      09/12/23  22:21:25  PAGE 9   
+
+  482   1      }
+  483          
+  484          //-------------------------------------------------------------------------------------------------------
+             -------------
+  485          //  @brief      ÄÚ²¿µ÷ÓÃ£¬ÓÃ»§ÎÞÐè¹ØÐÄ
+  486          //  @param      void        
+  487          //  @return             
+  488          //  @since      v1.0
+  489          //  Sample usage:               
+  490          //-------------------------------------------------------------------------------------------------------
+             -------------
+  491          //void oled_wr6dat_spi(uint8 dat)
+  492          //{
+  493          //  uint8 i=6;
+  494          //    
+  495          //  OLED_SPI_CS(0); //Ê¹ÄÜÐÅºÅ¶Ë£¬À­µÍÊ±Õý³£Ê¹ÓÃ
+  496          //  OLED_SPI_DC(1);
+  497          //  OLED_SCL(0);
+  498          //  while(i--)
+  499          //  {
+  500          //    if(dat&0x80){OLED_SDA(1);}
+  501          //    else{OLED_SDA(0);}
+  502          //    OLED_SCL(1);
+  503          //    OLED_SCL(0);
+  504          //    dat<<=1;
+  505          //  }
+  506          //    OLED_SPI_CS(1); //Ê¹ÄÜÐÅºÅ¶Ë£¬À­µÍÊ±Õý³£Ê¹ÓÃ
+  507          //}
+  508          
+  509          //-------------------------------------------------------------------------------------------------------
+             -------------
+  510          //  @brief      ÄÚ²¿µ÷ÓÃ£¬ÓÃ»§ÎÞÐè¹ØÐÄ
+  511          //  @param      void        
+  512          //  @return             
+  513          //  @since      v1.0
+  514          //  Sample usage:               
+  515          //-------------------------------------------------------------------------------------------------------
+             -------------
+  516          void oled_wrcmd_spi(uint8 cmd)
+  517          {
+  518   1        OLED_SPI_CS(0); //Ê¹ÄÜÐÅºÅ¶Ë£¬À­µÍÊ±Õý³£Ê¹ÓÃ
+  519   1        OLED_SPI_DC(0);
+  520   1        spi_mosi(cmd);
+  521   1          OLED_SPI_CS(1); //Ê¹ÄÜÐÅºÅ¶Ë£¬À­µÍÊ±Õý³£Ê¹ÓÃ
+  522   1      }
+  523          
+  524          //-------------------------------------------------------------------------------------------------------
+             -------------
+  525          //  @brief      ÄÚ²¿µ÷ÓÃ£¬ÓÃ»§ÎÞÐè¹ØÐÄ
+  526          //  @param      void        
+  527          //  @return             
+  528          //  @since      v1.0
+  529          //  Sample usage:               
+  530          //-------------------------------------------------------------------------------------------------------
+             -------------
+  531          void oled_hexascii_spi(uint16 hex,int8 * Print)
+  532          {
+  533   1        uint8 hexcheck ;
+  534   1        uint8 TEMP ;
+  535   1        TEMP = 6 ;
+  536   1        Print[TEMP ]='\0';
+  537   1        while(TEMP)
+  538   1        {
+  539   2            TEMP -- ;
+  540   2            hexcheck  =  hex%10 ;
+  541   2            hex   /=10 ;
+C251 COMPILER V5.60.0,  SEEKFREE_OLED                                                      09/12/23  22:21:25  PAGE 10  
+
+  542   2            Print[TEMP ]  = hexcheck + 0x30 ;
+  543   2        }
+  544   1        
+  545   1      }
+  546          
+  547          //-------------------------------------------------------------------------------------------------------
+             -------------
+  548          //  @brief      OLED³õÊ¼»¯º¯Êý
+  549          //  @param      NULL
+  550          //  @return     void
+  551          //  @since      v1.0
+  552          //  Sample usage:     
+  553          //-------------------------------------------------------------------------------------------------------
+             -------------
+  554          void oled_init_spi(void)
+  555          {
+  556   1        
+  557   1          OLED_SPI_CS(1);
+  558   1        
+  559   1          spi_init(OLED_SPI_N, OLED_SPI_SCLK_PIN, OLED_SPI_MOSI_PIN, OLED_SPI_MISO_PIN, 0, MASTER, SPI_SYSclk_D
+             -IV_4);
+  560   1        
+  561   1        OLED_SPI_RST(0);
+  562   1        delay_ms(50);
+  563   1        OLED_SPI_RST(1);
+  564   1        
+  565   1        oled_wrcmd_spi(0xae);//--turn off oled panel
+  566   1        oled_wrcmd_spi(0x00);//---set low column address
+  567   1        oled_wrcmd_spi(0x10);//---set high column address
+  568   1        oled_wrcmd_spi(0x40);//--set start line address  Set Mapping RAM Display Start Line (0x00~0x3F)
+  569   1        oled_wrcmd_spi(0x81);//--set contrast control register
+  570   1        oled_wrcmd_spi(Brightness); // Set SEG Output Current Brightness
+  571   1          
+  572   1      #if (0 == OLED_DISPLAY_DIR)
+  573   1        oled_wrcmd_spi(0xa1);//--Set SEG/Column Mapping     0xa0×óÓÒ·´ÖÃ 0xa1Õý³£
+  574   1        oled_wrcmd_spi(0xc8);//Set COM/Row Scan Direction   0xc0ÉÏÏÂ·´ÖÃ 0xc8Õý³£
+  575   1      #else
+                   oled_wrcmd_spi(0xa0);//--Set SEG/Column Mapping     0xa0×óÓÒ·´ÖÃ 0xa1Õý³£
+                 oled_wrcmd_spi(0xc0);//Set COM/Row Scan Direction   0xc0ÉÏÏÂ·´ÖÃ 0xc8Õý³£
+               #endif
+  579   1          
+  580   1        oled_wrcmd_spi(0xa6);//--set normal display
+  581   1        oled_wrcmd_spi(0xa8);//--set multiplex ratio(1 to 64)
+  582   1        oled_wrcmd_spi(0x3f);//--1/64 duty
+  583   1        oled_wrcmd_spi(0xd3);//-set display offset  Shift Mapping RAM Counter (0x00~0x3F)
+  584   1        oled_wrcmd_spi(0x00);//-not offset
+  585   1        oled_wrcmd_spi(0xd5);//--set display clock divide ratio/oscillator frequency
+  586   1        oled_wrcmd_spi(0x80);//--set divide ratio, Set Clock as 100 Frames/Sec
+  587   1        oled_wrcmd_spi(0xd9);//--set pre-charge period
+  588   1        oled_wrcmd_spi(0xf1);//Set Pre-Charge as 15 Clocks & Discharge as 1 Clock
+  589   1        oled_wrcmd_spi(0xda);//--set com pins hardware configuration
+  590   1        oled_wrcmd_spi(0x12);
+  591   1        oled_wrcmd_spi(0xdb);//--set vcomh
+  592   1        oled_wrcmd_spi(0x40);//Set VCOM Deselect Level
+  593   1        oled_wrcmd_spi(0x20);//-Set Page Addressing Mode (0x00/0x01/0x02)
+  594   1        oled_wrcmd_spi(0x02);//
+  595   1        oled_wrcmd_spi(0x8d);//--set Charge Pump enable/disable
+  596   1        oled_wrcmd_spi(0x14);//--set(0x10) disable
+  597   1        oled_wrcmd_spi(0xa4);// Disable Entire Display On (0xa4/0xa5)
+  598   1        oled_wrcmd_spi(0xa6);// Disable Inverse Display On (0xa6/a7)
+  599   1        oled_wrcmd_spi(0xaf);//--turn on oled panel
+  600   1        oled_fill_spi(0x00);  //³õÊ¼ÇåÆÁ
+  601   1        oled_set_pos_spi(0,0);
+  602   1      }
+  603          
+  604          //-------------------------------------------------------------------------------------------------------
+C251 COMPILER V5.60.0,  SEEKFREE_OLED                                                      09/12/23  22:21:25  PAGE 11  
+
+             -------------
+  605          //  @brief      OLEDÏÔÊ¾×ø±êÉèÖÃ
+  606          //  @param      x     xÖá×ø±êÉèÖÃ0-127
+  607          //  @param      y           yÖá×ø±êÉèÖÃ0-7
+  608          //  @return     void
+  609          //  @since      v1.0
+  610          //  Sample usage:     
+  611          //-------------------------------------------------------------------------------------------------------
+             -------------
+  612          void oled_set_pos_spi(uint8 x, uint8 y)
+  613          {
+  614   1      
+  615   1          
+  616   1          oled_wrcmd_spi((uint8)(0xb0+y));
+  617   1          oled_wrcmd_spi(((x&0xf0)>>4)|0x10);
+  618   1          oled_wrcmd_spi((x&0x0f)|0x00);
+  619   1      }
+  620          
+  621          //-------------------------------------------------------------------------------------------------------
+             -------------
+  622          //  @brief      OLEDÇåÆÁº¯Êý
+  623          //  @param      bmp_data  Ìî³äÑÕÉ«Ñ¡×Å(0x00 or 0xff)
+  624          //  @return     void
+  625          //  @since      v1.0
+  626          //  Sample usage:     
+  627          //-------------------------------------------------------------------------------------------------------
+             -------------
+  628          void oled_fill_spi(uint8 bmp_data)
+  629          {
+  630   1        uint8 y,x;
+  631   1        
+  632   1        for(y=0;y<8;y++)
+  633   1        {
+  634   2          oled_wrcmd_spi((uint8)(0xb0+y));
+  635   2          oled_wrcmd_spi(0x01);
+  636   2          oled_wrcmd_spi(0x10);
+  637   2          for(x=0;x<X_WIDTH;x++)  oled_wrdat_spi(bmp_data); 
+  638   2        }
+  639   1      }
+  640          
+  641          
+  642          //-------------------------------------------------------------------------------------------------------
+             -------------
+  643          //  @brief      OLED¿ØÖÆÒ»¸ö×ø±êÏÂ8¸öÏñËØµÄµãÁÁÓëÏ¨Ãð
+  644          //  @param      x     xÖá×ø±êÉèÖÃ0-127
+  645          //  @param      y           yÖá×ø±êÉèÖÃ0-7
+  646          //  @return     void
+  647          //  @since      v1.0
+  648          //  Sample usage:     oled_putpixel(0,0,0xff);//½«0,0×ø±ê 8¸öµãÈ«²¿µãÁÁ
+  649          //  Sample usage:     oled_putpixel(0,0,0x01);//½«0,0×ø±ê ×îµÍÎ»µãÁÁÆäÓà7¸öÏ¨Ãð
+  650          //  @note                   Í¬Àí¿ÉÒÔÈÎÒâ¿ØÖÆÒ»¸ö×ø±êÏÂ8¸öÏñËØµÄµãÁÁÓëÏ¨Ãð
+  651          //-------------------------------------------------------------------------------------------------------
+             -------------
+  652          void oled_putpixel_spi(uint8 x,uint8 y,uint8 data1)
+  653          {
+  654   1        oled_set_pos_spi(x,y);
+  655   1          oled_wrcmd_spi((uint8)(0xb0+y));
+  656   1        oled_wrcmd_spi(((x&0xf0)>>4)|0x10);
+  657   1        oled_wrcmd_spi((x&0x0f)|0x00);
+  658   1        oled_wrdat_spi(data1);
+  659   1      }
+  660          
+  661          //-------------------------------------------------------------------------------------------------------
+             -------------
+  662          //  @brief      OLED¹Ø±ÕÒ»¸ö×ø±êËùÓÐÁÁµã
+  663          //  @param      x     xÖá×ø±êÉèÖÃ0-127
+C251 COMPILER V5.60.0,  SEEKFREE_OLED                                                      09/12/23  22:21:25  PAGE 12  
+
+  664          //  @param      y           yÖá×ø±êÉèÖÃ0-7
+  665          //  @return     void
+  666          //  @since      v1.0
+  667          //  Sample usage:     
+  668          //-------------------------------------------------------------------------------------------------------
+             -------------
+  669          void oled_clrpixel_spi(uint8 x,uint8 y)
+  670          {
+  671   1        oled_set_pos_spi(x,y);
+  672   1          oled_wrcmd_spi((uint8)(0xb0+y));
+  673   1        oled_wrcmd_spi(((x&0xf0)>>4)|0x10);
+  674   1        oled_wrcmd_spi((x&0x0f)|0x00);
+  675   1        oled_wrdat_spi(0x00);
+  676   1      }
+  677          
+  678          
+  679          //-------------------------------------------------------------------------------------------------------
+             -------------
+  680          //  @brief      OLEDÏÔÊ¾×Ö·û´®(6*8×ÖÌå)
+  681          //  @param      x     xÖá×ø±êÉèÖÃ0-127
+  682          //  @param      y           yÖá×ø±êÉèÖÃ0-7
+  683          //  @param      ch[]        ×Ö·û´®
+  684          //  @return     void
+  685          //  @since      v1.0
+  686          //  Sample usage:     
+  687          //-------------------------------------------------------------------------------------------------------
+             -------------
+  688          void oled_p6x8str_spi(uint8 x,uint8 y,const int8 ch[])
+  689          {
+  690   1        uint8 c=0,i=0,j=0;
+  691   1        while (ch[j]!='\0')
+  692   1        {
+  693   2            c =ch[j]-32;
+  694   2            if(x>126){x=0;y++;}
+  695   2            oled_set_pos_spi(x,y);
+  696   2            for(i=0;i<6;i++)  oled_wrdat_spi(oled_6x8[c][i]);
+  697   2            x+=6;
+  698   2            j++;
+  699   2        }
+  700   1      }
+  701          
+  702          
+  703          //-------------------------------------------------------------------------------------------------------
+             -------------
+  704          //  @brief      OLEDÏÔÊ¾ÎÞ·ûºÅÊý(6*8×ÖÌå)
+  705          //  @param      x     xÖá×ø±êÉèÖÃ0-127
+  706          //  @param      y           yÖá×ø±êÉèÖÃ0-7
+  707          //  @param      num         ÎÞ·ûºÅÊý
+  708          //  @return     void
+  709          //  @since      v1.0
+  710          //  Sample usage:     
+  711          //-------------------------------------------------------------------------------------------------------
+             -------------
+  712          void oled_uint16_spi(uint8 x, uint8 y, uint16 num)
+  713          {
+  714   1        int8 ch[7];
+  715   1        
+  716   1        oled_hexascii_spi(num,ch);
+  717   1          
+  718   1          oled_p6x8str_spi(x, y, &ch[1]);     //ÏÔÊ¾Êý×Ö  6*8×ÖÌå
+  719   1          //oled_p8x16str(x, y, &ch[1]);  //ÏÔÊ¾Êý×Ö  8*16×ÖÌå
+  720   1      }
+  721          
+  722          //-------------------------------------------------------------------------------------------------------
+             -------------
+  723          //  @brief      OLEDÏÔÊ¾ÓÐ·ûºÅÊý(6*8×ÖÌå)
+C251 COMPILER V5.60.0,  SEEKFREE_OLED                                                      09/12/23  22:21:25  PAGE 13  
+
+  724          //  @param      x     xÖá×ø±êÉèÖÃ0-127
+  725          //  @param      y           yÖá×ø±êÉèÖÃ0-7
+  726          //  @param      num         ÓÐ·ûºÅÊý
+  727          //  @return     void
+  728          //  @since      v1.0
+  729          //  Sample usage:     
+  730          //-------------------------------------------------------------------------------------------------------
+             -------------
+  731          void oled_int16_spi(uint8 x, uint8 y, int16 num)
+  732          {
+  733   1        int8 ch[7];
+  734   1        if(num<0)   {num = -num;oled_p6x8str_spi(x, y, "-");}
+  735   1        else         oled_p6x8str_spi(x, y, " ");
+  736   1        x+=6;       
+  737   1          
+  738   1        oled_hexascii_spi(num,ch);
+  739   1          oled_p6x8str_spi(x, y, &ch[1]);     //ÏÔÊ¾Êý×Ö  6*8×ÖÌå
+  740   1      }
+  741          
+  742          //-------------------------------------------------------------------------------------------------------
+             -------------
+  743          //  @brief      OLEDÏÔÊ¾32Î»ÓÐ·ûºÅ(È¥³ýÕûÊý²¿·ÖÎÞÐ§µÄ0)
+  744          //  @param      x     xÖá×ø±êÉèÖÃ0-127
+  745          //  @param      y           yÖá×ø±êÉèÖÃ0-7
+  746          //  @param      dat         ÐèÒªÏÔÊ¾µÄ±äÁ¿£¬Êý¾ÝÀàÐÍuint32
+  747          //  @param      num         ÐèÒªÏÔÊ¾µÄÎ»Êý ×î¸ß10Î»  ²»°üº¬Õý¸ººÅ
+  748          //  @return     void
+  749          //  @since      v1.0
+  750          //  Sample usage:           oled_printf_int32(0,0,x,5);//x¿ÉÒÔÎªint32 uint16 int16 uint8 int8ÀàÐÍ
+  751          //  Sample usage:           ¸ºÊý»áÏÔÊ¾Ò»¸ö ¡®-¡¯ºÅ   ÕýÊýÏÔÊ¾Ò»¸ö¿Õ¸ñ
+  752          //-------------------------------------------------------------------------------------------------------
+             -------------
+  753          void oled_printf_int32_spi(uint16 x,uint16 y,int32 dat,uint8 num)
+  754          {
+  755   1          int8    buff[34];
+  756   1          uint8   length;
+  757   1          
+  758   1          if(10<num)      num = 10;
+  759   1          
+  760   1          num++;
+  761   1          if(0>dat)   length = zf_sprintf( &buff[0],"%d",dat);//¸ºÊý
+  762   1          else
+  763   1          {
+  764   2              buff[0] = ' ';
+  765   2              length = zf_sprintf( &buff[1],"%d",dat);
+  766   2              length++;
+  767   2          }
+  768   1          while(length < num)
+  769   1          {
+  770   2              buff[length] = ' ';
+  771   2              length++;
+  772   2          }
+  773   1          buff[num] = '\0';
+  774   1          
+  775   1          oled_p6x8str_spi((uint8)x, (uint8)y, (int* )buff);  //ÏÔÊ¾Êý×Ö
+  776   1      }
+  777          
+  778          //-------------------------------------------------------------------------------------------------------
+             -------------
+  779          //  @brief      OLEDÏÔÊ¾¸¡µãÊý(È¥³ýÕûÊý²¿·ÖÎÞÐ§µÄ0)
+  780          //  @param      x     xÖá×ø±êÉèÖÃ0-127
+  781          //  @param      y           yÖá×ø±êÉèÖÃ0-7
+  782          //  @param      dat         ÐèÒªÏÔÊ¾µÄ±äÁ¿£¬Êý¾ÝÀàÐÍfloat»òdouble
+  783          //  @param      num         ÕûÊýÎ»ÏÔÊ¾³¤¶È   ×î¸ß10Î»  
+  784          //  @param      pointnum    Ð¡ÊýÎ»ÏÔÊ¾³¤¶È   ×î¸ß6Î»
+  785          //  @return     void
+C251 COMPILER V5.60.0,  SEEKFREE_OLED                                                      09/12/23  22:21:25  PAGE 14  
+
+  786          //  @since      v1.0
+  787          //  Sample usage:           oled_printf_float(0,0,x,2,3);//ÏÔÊ¾¸¡µãÊý   ÕûÊýÏÔÊ¾2Î»   Ð¡ÊýÏÔÊ¾ÈýÎ»
+  788          //  @note                   ÌØ±ð×¢Òâµ±·¢ÏÖÐ¡Êý²¿·ÖÏÔÊ¾µÄÖµÓëÄãÐ´ÈëµÄÖµ²»Ò»ÑùµÄÊ±ºò£¬
+  789          //                          ¿ÉÄÜÊÇÓÉÓÚ¸¡µãÊý¾«¶È¶ªÊ§ÎÊÌâµ¼ÖÂµÄ£¬Õâ²¢²»ÊÇÏÔÊ¾º¯ÊýµÄÎÊÌâ£¬
+  790          //                          ÓÐ¹ØÎÊÌâµÄÏêÇé£¬Çë×ÔÐÐ°Ù¶ÈÑ§Ï°   ¸¡µãÊý¾«¶È¶ªÊ§ÎÊÌâ¡£
+  791          //                          ¸ºÊý»áÏÔÊ¾Ò»¸ö ¡®-¡¯ºÅ   ÕýÊýÏÔÊ¾Ò»¸ö¿Õ¸ñ
+  792          //-------------------------------------------------------------------------------------------------------
+             -------------
+  793          void oled_printf_float_spi(uint16 x,uint16 y,double dat,uint8 num,uint8 pointnum)
+  794          {
+  795   1          uint8   length;
+  796   1        int8    buff[34];
+  797   1        int8    start,end,point;
+  798   1      
+  799   1        if(6<pointnum)  pointnum = 6;
+  800   1          if(10<num)      num = 10;
+  801   1              
+  802   1          if(0>dat)   length = zf_sprintf( &buff[0],"%f",dat);//¸ºÊý
+  803   1          else
+  804   1          {
+  805   2              length = zf_sprintf( &buff[1],"%f",dat);
+  806   2              length++;
+  807   2          }
+  808   1          point = length - 7;         //¼ÆËãÐ¡ÊýµãÎ»ÖÃ
+  809   1          start = point - num - 1;    //¼ÆËãÆðÊ¼Î»
+  810   1          end = point + pointnum + 1; //¼ÆËã½áÊøÎ»
+  811   1          while(0>start)//ÕûÊýÎ»²»¹»  Ä©Î²Ó¦¸ÃÌî³ä¿Õ¸ñ
+  812   1          {
+  813   2              buff[end] = ' ';
+  814   2              end++;
+  815   2              start++;
+  816   2          }
+  817   1          
+  818   1          if(0>dat)   buff[start] = '-';
+  819   1          else        buff[start] = ' ';
+  820   1          
+  821   1          buff[end] = '\0';
+  822   1          
+  823   1          oled_p6x8str_spi((uint8)x, (uint8)y, (int8 *)buff); //ÏÔÊ¾Êý×Ö
+  824   1      }
+  825          
+  826          
+  827          
+  828          //-------------------------------------------------------------------------------------------------------
+             -------------
+  829          //  @brief      OLEDÏÔÊ¾Í¼Ïñ
+  830          //  @param      high      Í¼Ïñ¸ß¶È
+  831          //  @param      width     Í¼Ïñ¿í¶È
+  832          //  @param      *p        Í¼ÏñµØÖ·£¨Êý×é£©
+  833          //  @param      value     ¶þÖµ»¯·§Öµ
+  834          //  @return     void
+  835          //  @since      v1.0
+  836          //  Sample usage: 
+  837          //  @Note       Ê¹ÓÃImage2lcd V3.2Èí¼þÈ¡Ä£   CÓïÑÔÊý×é   Ë®Æ½É¨Ãè   
+  838          //              ¿í¶È¸ß¶È×ÔÐÐÉèÖÃ   ÑÕÉ«·´×ª  256É«
+  839          //-------------------------------------------------------------------------------------------------------
+             -------------
+  840          void oled_dis_bmp_spi(uint16 high, uint16 width, uint8 *p,uint8 value)
+  841          {
+  842   1        uint16 i,j;
+  843   1          uint16 temp,temp1;
+  844   1          uint8 dat;
+  845   1          
+  846   1          
+  847   1          temp1 = high%8;
+  848   1          if(temp1 == 0) temp = high/8;
+C251 COMPILER V5.60.0,  SEEKFREE_OLED                                                      09/12/23  22:21:25  PAGE 15  
+
+  849   1          else           temp = high/8+1;
+  850   1      
+  851   1          for(i=0; i<temp; i++)
+  852   1          {
+  853   2              oled_set_pos_spi((uint8)0,(uint8)i);
+  854   2              for(j=0; j<width; j++)
+  855   2              {
+  856   3                  dat = 0;
+  857   3                  if( i<(temp-1) || !temp1 || temp1>=1)dat |= (*(p+i*8*width+j+width*0) > value? 1: 0)<<0;
+  858   3                  if( i<(temp-1) || !temp1 || temp1>=2)dat |= (*(p+i*8*width+j+width*1) > value? 1: 0)<<1;
+  859   3                  if( i<(temp-1) || !temp1 || temp1>=3)dat |= (*(p+i*8*width+j+width*2) > value? 1: 0)<<2;
+  860   3                  if( i<(temp-1) || !temp1 || temp1>=4)dat |= (*(p+i*8*width+j+width*3) > value? 1: 0)<<3;
+  861   3                  if( i<(temp-1) || !temp1 || temp1>=5)dat |= (*(p+i*8*width+j+width*4) > value? 1: 0)<<4;
+  862   3                  if( i<(temp-1) || !temp1 || temp1>=6)dat |= (*(p+i*8*width+j+width*5) > value? 1: 0)<<5;
+  863   3                  if( i<(temp-1) || !temp1 || temp1>=7)dat |= (*(p+i*8*width+j+width*6) > value? 1: 0)<<6;
+  864   3                  if( i<(temp-1) || !temp1 || temp1>=8)dat |= (*(p+i*8*width+j+width*7) > value? 1: 0)<<7;
+  865   3                 
+  866   3                  oled_wrdat_spi(dat);
+  867   3              }
+  868   2          }
+  869   1      }
+  870          
+  871          //-------------------------------------------------------------------------------------------------------
+             -------------
+  872          //  @brief      ºº×ÖÏÔÊ¾
+  873          //  @param      x       ºá×ø±ê 0-127
+  874          //  @param      y       ×Ý×ø±ê 0-7
+  875          //  @param      size    È¡Ä£µÄÊ±ºòÉèÖÃµÄºº×Ö×ÖÌå´óÐ¡£¬Ò²¾ÍÊÇÒ»¸öºº×ÖÕ¼ÓÃµÄµãÕó³¤¿íÎª¶àÉÙ¸öµã£¬È¡Ä£µÄÊ±ºòÐ
+             -èÒª³¤¿íÊÇÒ»ÑùµÄ¡£
+  876          //  @param      *p      ÐèÒªÏÔÊ¾µÄºº×ÖÊý×é
+  877          //  @param      len     ÐèÒªÏÔÊ¾¶àÉÙÎ»
+  878          //  @return     void
+  879          //  @since      v1.0
+  880          //  Sample usage:   
+  881          //  @Note       Ê¹ÓÃPCtoLCD2002Èí¼þÈ¡Ä£       ÒõÂë¡¢ÖðÐÐÊ½¡¢Ë³Ïò   16*16
+  882          //-------------------------------------------------------------------------------------------------------
+             -------------
+  883          void oled_print_chinese_spi(uint8 x, uint8 y, uint8 size, const uint8 *p, uint8 len)
+  884          {
+  885   1          uint16 i,j,k;
+  886   1          
+  887   1          for(i=0; i<len; i++)
+  888   1          {
+  889   2              for(j=0; j<(size/8); j++)
+  890   2              {
+  891   3                  oled_set_pos_spi((uint8)(x+i*size), (uint8)(y+j));
+  892   3                  for(k=0; k<16; k++)
+  893   3                  {
+  894   4                      oled_wrdat_spi(*p);
+  895   4                      p++;
+  896   4                  }
+  897   3              }
+  898   2          }
+  899   1      }
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =      5600     ------
+  ecode size           =    ------     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =    ------     ------
+  xdata-const size     =    ------     ------
+  edata size           =       330     ------
+  bit size             =    ------     ------
+C251 COMPILER V5.60.0,  SEEKFREE_OLED                                                      09/12/23  22:21:25  PAGE 16  
+
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =        10     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

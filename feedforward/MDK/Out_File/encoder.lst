@@ -1,0 +1,94 @@
+C251 COMPILER V5.60.0,  encoder                                                            27/12/23  12:51:18  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE encoder
+OBJECT MODULE PLACED IN .\Out_File\encoder.obj
+COMPILER INVOKED BY: C:\keil MCK\C251\BIN\C251.EXE encoder.c XSMALL INTR2 WARNINGLEVEL(3) OPTIMIZE(0,SPEED) BROWSE INCDI
+                    -R(..\..\Libraries\libraries;..\..\Libraries\seekfree_libraries;..\..\Libraries\seekfree_peripheral;..\CODE;..\USER\inc;.
+                    -.\USER\src) DEBUG PRINT(.\Out_File\encoder.lst) TABS(2) OBJECT(.\Out_File\encoder.obj) 
+
+stmt  level    source
+
+    1          #include "encoder.h"
+    2          #include "common.h"
+    3          #include "zf_tim.h"
+    4          #include "kalman.h"
+    5          #include "flash.h"
+    6          #include "oled_menu.h"
+    7          
+    8          int16 templ_pluse;    
+    9          int16 tempr_pluse;
+   10          float spd_l;
+   11          float spd_r;
+   12          
+   13          
+   14          
+   15          
+   16          
+   17          
+   18          
+   19          
+   20          void encoder_handle(void)
+   21          { 
+   22   1        //方向信息需要调整
+   23   1              tempr_pluse = ctimer_count_read(SPEEDL_PLUSE);
+   24   1          templ_pluse = ctimer_count_read(SPEEDR_PLUSE);
+   25   1      
+   26   1              //计数器清零
+   27   1          ctimer_count_clean(SPEEDL_PLUSE);
+   28   1          ctimer_count_clean(SPEEDR_PLUSE);
+   29   1      
+   30   1              //采集方向信息
+   31   1              if(0 == SPEEDL_DIR)    
+   32   1              {
+   33   2                  tempr_pluse = -tempr_pluse;
+   34   2              }
+   35   1      
+   36   1          if(0 != SPEEDR_DIR)   //调整顺序    
+   37   1              {
+   38   2                  templ_pluse = -templ_pluse;
+   39   2              }
+   40   1              
+   41   1      }
+   42          void encoder_spd_get(void)
+   43          {
+   44   1        encoder_handle();
+   45   1        spd_l=templ_pluse*1.692;   //得到转速,cm/s
+   46   1        spd_r=tempr_pluse*1.692;
+   47   1        //spd_l=(templ_pluse<<1)+templ_pluse*1.384;   //得到转速,cm/s
+   48   1        //spd_r=(tempr_pluse<<1)+tempr_pluse*1.384;
+   49   1        
+   50   1        
+   51   1        //the_KalmanFilter((float)templ_pluse,(float)tempr_pluse);
+   52   1      //  klm_l.out=templ_pluse;
+   53   1      //  klm_r.out=tempr_pluse;
+   54   1      //  spd_l=klm_l.out*3.384;   //得到转速,cm/s
+   55   1      //  spd_r=klm_r.out*3.384;
+   56   1        //printf("%f,%f\n",spd_l,spd_r);    
+   57   1      }
+C251 COMPILER V5.60.0,  encoder                                                            27/12/23  12:51:18  PAGE 2   
+
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =       131     ------
+  ecode size           =    ------     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =    ------     ------
+  xdata-const size     =    ------     ------
+  edata size           =        12     ------
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =    ------     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

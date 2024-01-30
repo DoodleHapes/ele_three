@@ -1,0 +1,1314 @@
+C251 COMPILER V5.60.0,  oled_menu                                                          27/12/23  12:51:36  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE oled_menu
+OBJECT MODULE PLACED IN .\Out_File\oled_menu.obj
+COMPILER INVOKED BY: C:\keil MCK\C251\BIN\C251.EXE oled_menu.c XSMALL INTR2 WARNINGLEVEL(3) OPTIMIZE(0,SPEED) BROWSE INC
+                    -DIR(..\..\Libraries\libraries;..\..\Libraries\seekfree_libraries;..\..\Libraries\seekfree_peripheral;..\CODE;..\USER\inc
+                    -;..\USER\src) DEBUG PRINT(.\Out_File\oled_menu.lst) TABS(2) OBJECT(.\Out_File\oled_menu.obj) 
+
+stmt  level    source
+
+    1          #include "SEEKFREE_OLED.h"
+    2          #include "key.h"
+    3          #include "zf_delay.h"
+    4          #include "flash.h"
+    5          #include "oled_menu.h"
+    6          #include "zf_adc.h"
+    7          #include "pid_control.h"
+    8          #include "encoder.h"
+    9          #include "gyro.h"
+   10          #include "fuzzy_control.h"
+   11          
+   12          
+   13          
+   14          
+   15          
+   16          //电压
+   17          float volt;
+   18          
+   19          
+   20          //菜单有关
+   21          uint8 start_flag=0;
+   22          uint8 clear_flag=0;
+   23          uint8 page=init;
+   24          uint8 flag_in=0;
+   25          uint8 sign_count=0;   //用于指示多出来的
+   26          uint8 row_count=0;
+   27          uint8 last_row_count=0;
+   28          uint8 max_page_pid=13;     //用来计算第二页中最多的数值
+   29          uint8 max_page_motion=1;
+   30          uint8 max_page_roundabout=16;
+   31          uint8 max_ele_num=4;
+   32          
+   33          
+   34          
+   35          //滚动菜单
+   36          //可以长按来向下滚动菜单，但是滑到底将失效
+   37          //皮皮学长的表现方式可以通过修改库函数得到
+   38          //出入平安
+   39          void page_init(void)
+   40          {
+   41   1        //在此页面发车
+   42   1        oled_p6x8str(0,0,"volt:");
+   43   1        oled_printf_float(42,0,volt,4,2);   //电池电压检测
+   44   1       //八路电感
+   45   1        
+   46   1        
+   47   1        
+   48   1        oled_printf_int32(0,1,(int32)induct1_filter,4);
+   49   1        oled_printf_int32(31,1,(int32)induct2_filter,4);
+   50   1        oled_printf_int32(63,1,(int32)induct3_filter,4);
+   51   1        oled_printf_int32(95,1,(int32)induct4_filter,4);
+   52   1        oled_printf_int32(31,2,(int32)induct5_filter,4);
+   53   1        oled_printf_int32(63,2,(int32)induct6_filter,4);
+   54   1      //  oled_printf_int32(63,2,(int32)induct7_filter,4);
+   55   1      //  oled_printf_int32(95,2,(int32)induct8_filter,4);
+   56   1        oled_p6x8str(0,3,"eco_l");
+   57   1        oled_p6x8str(0,4,"eco_r");
+C251 COMPILER V5.60.0,  oled_menu                                                          27/12/23  12:51:36  PAGE 2   
+
+   58   1        oled_p6x8str(64,3,"f_p");
+   59   1        oled_p6x8str(64,4,"f_d");
+   60   1        oled_printf_float(92,3,final_p,3,3);
+   61   1        oled_printf_float(92,4,final_d,3,1);
+   62   1      //  oled_printf_float(92,3,actual_err,3,1);
+   63   1      //  oled_printf_float(92,4,actual_d_err,3,1);   
+   64   1        oled_p6x8str(0,5,"Angle_err:");
+   65   1        oled_p6x8str(0,6,"Angle:");
+   66   1        oled_printf_int32(30,3,(int32)spd_l,6);
+   67   1        oled_printf_int32(30,4,(int32)spd_r,6);
+   68   1        oled_printf_float(60,5,Angle_err,3,3);
+   69   1        oled_printf_float(60,6,Angle,3,3);
+   70   1      
+   71   1      
+   72   1        
+   73   1        
+   74   1        
+   75   1        oled_p6x8str(45,7,"err:");
+   76   1        oled_printf_float(70,7,err_induct,3,2);
+   77   1      
+   78   1        
+   79   1      }
+   80          void page_sort(void)
+   81          {
+   82   1        oled_p6x8str(0,0,"PID");
+   83   1        oled_p6x8str(0,1,"roundabout_page");
+   84   1        oled_p6x8str(0,2,"pwm_factor");
+   85   1        oled_p6x8str(0,3,"motion");
+   86   1        oled_p6x8str(0,4,"ele_list");
+   87   1        oled_p6x8str(0,5,"kalman"); 
+   88   1        oled_printf_int32(64,0,row_count,3);    
+   89   1      
+   90   1      
+   91   1      }
+   92          void page_pid(void)
+   93          {
+   94   1        uint8 location;
+   95   1        oled_printf_int32(110,0,sign_count,2);
+   96   1        //if(row_count>7)
+   97   1          //sign_count=row_count%7;
+   98   1        //if(max_page_1-sign_count<=7)
+   99   1          //sign_count=max_page_1-7;     //为了滑到下面去也不会继续往下显示
+  100   1        if(0-sign_count>=0)
+  101   1        {
+  102   2          location=0-sign_count;
+  103   2          oled_p6x8str(0,location,"p_zero:");
+  104   2          oled_printf_float(75,(uint16)location,p_zero,3,1);
+  105   2        }
+  106   1        if(1-sign_count>=0)
+  107   1        {
+  108   2          location=1-sign_count;
+  109   2          oled_p6x8str(0,location,"d_zero:");
+  110   2          oled_printf_float(75,(uint16)location,d_zero,3,1);
+  111   2        }
+  112   1        if(2-sign_count>=0)
+  113   1        {
+  114   2          location=2-sign_count;
+  115   2          oled_p6x8str(0,location,"dlt_p_sm:");
+  116   2          oled_printf_float(75,(uint16)location,delta_p_sm,3,1);
+  117   2        }
+  118   1        if(3-sign_count>=0)
+  119   1        {
+  120   2          location=3-sign_count;
+  121   2          oled_p6x8str(0,location,"dlt_p_bst:");
+  122   2          oled_printf_float(75,(uint16)location,delta_p_bst,3,1);
+  123   2        }
+C251 COMPILER V5.60.0,  oled_menu                                                          27/12/23  12:51:36  PAGE 3   
+
+  124   1          if(4-sign_count>=0)
+  125   1        {
+  126   2          location=4-sign_count;
+  127   2          oled_p6x8str(0,location,"dlt_d_sm:");
+  128   2          oled_printf_float(75,(uint16)location,delta_d_sm,3,1);
+  129   2        }
+  130   1          if(5-sign_count>=0)
+  131   1        {
+  132   2          location=5-sign_count;
+  133   2          oled_p6x8str(0,location,"dlt_d_bst:");
+  134   2          oled_printf_float(75,(uint16)location,delta_d_bst,3,1);
+  135   2        }
+  136   1        if(6-sign_count>=0)
+  137   1        {
+  138   2          location=6-sign_count;
+  139   2          oled_p6x8str(0,location,"spd_kp:");
+  140   2          oled_printf_float(75,(uint16)location,spd_kp,3,2);
+  141   2        }
+  142   1        if(7-sign_count>=0)
+  143   1        {
+  144   2          location=7-sign_count;
+  145   2          oled_p6x8str(0,location,"spd_ki:");
+  146   2          oled_printf_float(75,(uint16)location,spd_ki,2,2);
+  147   2        }
+  148   1        if(8-sign_count>=0&&8-sign_count<=7)
+  149   1        {
+  150   2          location=8-sign_count;
+  151   2          oled_p6x8str(0,location,"str_spd");
+  152   2          oled_printf_int32(75,(uint16)location,str_spd,3);
+  153   2        }
+  154   1      
+  155   1        if(9-sign_count>=0&&9-sign_count<=7)
+  156   1        {
+  157   2          location=9-sign_count;
+  158   2          oled_p6x8str(0,location,"roll_spd");
+  159   2          oled_printf_int32(75,(uint16)location,roll_spd,3);
+  160   2        }
+  161   1        if(10-sign_count>=0&&10-sign_count<=7)
+  162   1        {
+  163   2          location=10-sign_count;
+  164   2          oled_p6x8str(0,location,"max_err");
+  165   2          oled_printf_float(75,(uint16)location,max_err_bound,3,1);
+  166   2        }
+  167   1        if(11-sign_count>=0&&11-sign_count<=7)
+  168   1        {
+  169   2          location=11-sign_count;
+  170   2          oled_p6x8str(0,location,"max_d_err");
+  171   2          oled_printf_float(75,(uint16)location,max_d_err_bound,3,1);
+  172   2        }
+  173   1        if(12-sign_count>=0&&12-sign_count<=7)
+  174   1        {
+  175   2          location=12-sign_count;
+  176   2          oled_p6x8str(0,location,"cross_idt");
+  177   2          oled_printf_int32(75,(uint16)location,cross_idt,3);
+  178   2        }
+  179   1      }
+  180          void page_factor(void)
+  181          {
+  182   1        oled_p6x8str(12,0,"s_r_judge:");
+  183   1          oled_printf_float(75,0,str_roll_judge,4,1);
+  184   1        oled_p6x8str(0,1,"dt_l:");
+  185   1        if(duty_left>0)
+  186   1        oled_printf_int32(35,1,duty_left,4);
+  187   1        else
+  188   1        {
+  189   2          oled_p6x8str(35,1,"    ");
+C251 COMPILER V5.60.0,  oled_menu                                                          27/12/23  12:51:36  PAGE 4   
+
+  190   2          oled_printf_int32(35,1,0,4);
+  191   2      
+  192   2        }
+  193   1        oled_p6x8str(60,1,"dt_r:");
+  194   1        if(duty_right>0)
+  195   1        oled_printf_int32(92,1,duty_right,4);
+  196   1        else
+  197   1        {
+  198   2          oled_p6x8str(92,1,"    ");
+  199   2          oled_printf_int32(92,1,0,4);
+  200   2          
+  201   2      
+  202   2        }
+  203   1        oled_printf_int32(35,2,convert_l,4);
+  204   1        oled_printf_int32(92,2,convert_r,4);
+  205   1        oled_p6x8str(0,2,"cv_l:");
+  206   1        oled_p6x8str(60,2,"cv_r:");
+  207   1      
+  208   1        
+  209   1        
+  210   1        
+  211   1        //用于判断直弯
+  212   1        if(factor_flag==roll)  
+  213   1        oled_p6x8str(64,4,"roll");
+  214   1        else if(factor_flag==stright)
+  215   1        {
+  216   2          oled_p6x8str(64,4,"    ");
+  217   2          oled_p6x8str(64,4,"str");
+  218   2        }
+  219   1        else if(factor_flag==roundabout)
+  220   1        {
+  221   2          oled_p6x8str(64,4,"    ");
+  222   2          oled_p6x8str(64,4,"round");
+  223   2        }
+  224   1        else if(factor_flag==cross)
+  225   1        {
+  226   2          oled_p6x8str(64,4,"    ");
+  227   2          oled_p6x8str(64,4,"cross"); 
+  228   2        }
+  229   1          
+  230   1      }
+  231          void page_motion(void)
+  232          {
+  233   1        uint8 i;
+  234   1        oled_p6x8str(0,0,"gyro_motion");  //陀螺仪模式
+  235   1       for(i=0;i<max_page_motion;i++)
+  236   1       {
+  237   2      
+  238   2           if(((on_off_motion[i])&1)==1)//奇数
+  239   2          oled_p6x8str(92,i,"OFF");
+  240   2        else
+  241   2          oled_p6x8str(92,i,"ON ");
+  242   2       }
+  243   1      }
+  244            
+  245          
+  246          void page_roundabout(void)
+  247          {
+  248   1        uint8 location;
+  249   1        if(0-sign_count>=0)
+  250   1        {
+  251   2          location=0-sign_count;
+  252   2          oled_p6x8str(0,location,"gyro_roll:");
+  253   2          oled_printf_int32(92,(uint16)location,(int32)gyro_roll,3);
+  254   2        }
+  255   1        if(1-sign_count>=0)
+C251 COMPILER V5.60.0,  oled_menu                                                          27/12/23  12:51:36  PAGE 5   
+
+  256   1        {
+  257   2          location=1-sign_count;
+  258   2          oled_p6x8str(0,location,"at_trace_pro:");
+  259   2          oled_printf_float(92,(uint16)location,at_trace_pro,1,2);
+  260   2        }
+  261   1        if(2-sign_count>=0)
+  262   1        {
+  263   2          location=2-sign_count;
+  264   2          oled_p6x8str(0,location,"out_pro:");
+  265   2          oled_printf_float(92,(uint16)location,out_pro,1,2);
+  266   2        }
+  267   1        if(3-sign_count>=0)
+  268   1        {
+  269   2          location=3-sign_count;
+  270   2          oled_p6x8str(0,location,"intg_in:");
+  271   2          oled_printf_int32(92,(uint16)location,(int32)integral_in,3);
+  272   2        }
+  273   1        if(4-sign_count>=0)
+  274   1        {
+  275   2          location=4-sign_count;
+  276   2          oled_p6x8str(0,location,"intg_out:");
+  277   2          oled_printf_int32(92,(uint16)location,(int32)integral_out,3);
+  278   2        }
+  279   1        if(5-sign_count>=0)
+  280   1        {
+  281   2          location=5-sign_count;
+  282   2          oled_p6x8str(0,location,"rd_in_dif:");
+  283   2          oled_printf_float(92,(uint16)location,roud_in_dif,3,1);
+  284   2        }
+  285   1        if(6-sign_count>=0&&6-sign_count<=7)
+  286   1        {
+  287   2          location=6-sign_count;
+  288   2          oled_p6x8str(0,location,"int_p");
+  289   2          oled_printf_int32(92,(uint16)location,int_p,4);
+  290   2        }
+  291   1        if(7-sign_count>=0&&7-sign_count<=7)
+  292   1        {
+  293   2          location=7-sign_count;
+  294   2          oled_p6x8str(0,location,"int_d");
+  295   2          oled_printf_int32(92,(uint16)location,int_d,4);
+  296   2        }
+  297   1      
+  298   1        if(8-sign_count>=0&&8-sign_count<=7)
+  299   1        {
+  300   2          location=8-sign_count;
+  301   2          oled_p6x8str(0,location,"roud_at_p:");
+  302   2          oled_printf_float(92,(uint16)location,roud_at_p,2,2);
+  303   2      
+  304   2        }
+  305   1        if(9-sign_count>=0&&9-sign_count<=7)
+  306   1        {
+  307   2          location=9-sign_count;
+  308   2          oled_p6x8str(0,location,"roud_at_i:");
+  309   2          oled_printf_float(92,(uint16)location,roud_at_i,2,2);
+  310   2        }
+  311   1        if(10-sign_count>=0&&10-sign_count<=7)
+  312   1        {
+  313   2          location=10-sign_count;
+  314   2          oled_p6x8str(0,location,"roud_gy_p");
+  315   2          oled_printf_float(92,(uint16)location,(int32)roud_gy_p,4,1);
+  316   2        }
+  317   1        if(11-sign_count>=0&&11-sign_count<=7)
+  318   1        {
+  319   2          location=11-sign_count;
+  320   2          oled_p6x8str(0,location,"roud_gy_d");
+  321   2          oled_printf_float(92,(uint16)location,(int32)roud_gy_d,4,1);
+C251 COMPILER V5.60.0,  oled_menu                                                          27/12/23  12:51:36  PAGE 6   
+
+  322   2        }
+  323   1        if(12-sign_count>=0&&12-sign_count<=7)
+  324   1        {
+  325   2          location=12-sign_count;
+  326   2          oled_p6x8str(0,location,"roud_spd");
+  327   2          oled_printf_int32(92,(uint16)location,(int32)roud_spd,4);
+  328   2        }
+  329   1        if(13-sign_count>=0&&13-sign_count<=7)
+  330   1        {
+  331   2          location=13-sign_count;
+  332   2          oled_p6x8str(0,location,"brim_int");
+  333   2          oled_printf_int32(92,(uint16)location,(int32)brim_int,4);
+  334   2        } 
+  335   1        if(14-sign_count>=0&&14-sign_count<=7)
+  336   1        {
+  337   2          location=14-sign_count;
+  338   2          oled_p6x8str(0,location,"mid_int");
+  339   2          oled_printf_int32(92,(uint16)location,(int32)mid_int,4);
+  340   2        } 
+  341   1        
+  342   1        oled_printf_int32(70,0,(int32)round_state,1);   //显示在哪个状态
+  343   1      }
+  344          void page_kalman(void)
+  345          {
+  346   1        oled_p6x8str(0,0,"klm_R:");
+  347   1        oled_p6x8str(0,1,"klm_Q:"); 
+  348   1        oled_p6x8str(0,2,"klm_B:");
+  349   1        oled_p6x8str(0,3,"klm_LastP:");
+  350   1        oled_printf_float(92,0,klm_R,3,2);  
+  351   1        oled_printf_float(92,1,klm_Q,3,2);
+  352   1        oled_printf_float(92,2,klm_B,3,2);
+  353   1      }
+  354          void element_judge(uint8 i)
+  355          {
+  356   1        switch(ele[i])
+  357   1        {
+  358   2          case 0:
+  359   2          {
+  360   3            oled_p6x8str(80,i,"Off");
+  361   3            break;
+  362   3          }
+  363   2          case 1:
+  364   2          {
+  365   3            oled_p6x8str(80,i,"Lef_Rd");
+  366   3            break;
+  367   3          }
+  368   2          case 2:
+  369   2          {
+  370   3            oled_p6x8str(80,i,"Rig_Rd");
+  371   3            break;
+  372   3          }
+  373   2          case 3:
+  374   2          {
+  375   3            oled_p6x8str(80,i,"B_Lef_Rd");  
+  376   3            break;
+  377   3          }
+  378   2          case 4:
+  379   2          {
+  380   3            oled_p6x8str(80,i,"B_Rig_Rd");
+  381   3            break;
+  382   3          }
+  383   2          default:
+  384   2          {
+  385   3            break;
+  386   3          }
+  387   2          
+C251 COMPILER V5.60.0,  oled_menu                                                          27/12/23  12:51:36  PAGE 7   
+
+  388   2        }
+  389   1      }
+  390          void page_ele_list(void)
+  391          {
+  392   1        uint8 i;
+  393   1        oled_p6x8str(0,0,"direction:");
+  394   1        if(ele_dir==0)
+  395   1        oled_p6x8str(80,0,"pos");
+  396   1        else
+  397   1        oled_p6x8str(80,0,"cov");
+  398   1        
+  399   1        oled_p6x8str(0,1,"num:");
+  400   1        oled_printf_int32(80,1,(int32)ele_num,2);
+  401   1        
+  402   1        oled_p6x8str(0,2,"Fir:");
+  403   1        oled_p6x8str(0,3,"Sec:");
+  404   1        oled_p6x8str(0,4,"Thr:");
+  405   1        oled_p6x8str(0,5,"For:");
+  406   1        oled_p6x8str(0,6,"Fiv:");
+  407   1        
+  408   1        for(i=2;i<=6;i++)
+  409   1        element_judge(i);
+  410   1        
+  411   1        
+  412   1      }
+  413            
+  414          void oled_show_flag(void)
+  415          {
+  416   1        
+  417   1        //oled_printf_int32(50,1,row_count,4);
+  418   1        if(row_count<7)   //当小于7的时候就在
+  419   1        { 
+  420   2          if(flag_in==1)
+  421   2          {
+  422   3            
+  423   3            oled_p6x8str(120,row_count,"<");
+  424   3            oled_p6x8str(70,row_count,"*");
+  425   3          }
+  426   2          else
+  427   2          {
+  428   3            
+  429   3            oled_p6x8str(120,row_count,"<");
+  430   3            
+  431   3          }
+  432   2        }
+  433   1        else              //当滑到底时停留在最后一行
+  434   1        {
+  435   2          if(flag_in==1)
+  436   2          {
+  437   3            
+  438   3            oled_p6x8str(120,7,"<");
+  439   3            oled_p6x8str(70,7,"*");
+  440   3          }
+  441   2          else
+  442   2          {
+  443   3            
+  444   3            oled_p6x8str(120,7,"<");      
+  445   3            
+  446   3          }   
+  447   2        }
+  448   1      }
+  449          void oled_show_image(void)
+  450          {
+  451   1        if(clear_flag==1)
+  452   1        {
+  453   2          clear_flag=0;
+C251 COMPILER V5.60.0,  oled_menu                                                          27/12/23  12:51:36  PAGE 8   
+
+  454   2          oled_clear();
+  455   2        }
+  456   1        switch(page)
+  457   1        {
+  458   2          case init:          //init
+  459   2          {
+  460   3            page_init();
+  461   3            break;
+  462   3          }
+  463   2          case sort:
+  464   2          {
+  465   3            page_sort();
+  466   3            break;
+  467   3          }
+  468   2          case PID:         //PID
+  469   2          {
+  470   3            page_pid();
+  471   3            break;
+  472   3          }
+  473   2          case pwm_factor:         //pwm_factor
+  474   2          {
+  475   3            page_factor();
+  476   3            break;
+  477   3          }
+  478   2          case roundabout_page:        //roundabout_page
+  479   2          {
+  480   3            page_roundabout();
+  481   3            break;
+  482   3          }
+  483   2          case motion:        //motion
+  484   2          {
+  485   3            page_motion();
+  486   3            break;
+  487   3          }
+  488   2          case ele_list:       //
+  489   2          {
+  490   3            page_ele_list();
+  491   3            break;
+  492   3          }
+  493   2          case kalman:
+  494   2          {
+  495   3            page_kalman();
+  496   3            break;
+  497   3          }
+  498   2        }
+  499   1        if(page!=init)
+  500   1        oled_show_flag();
+  501   1        
+  502   1      }
+  503          void change_num(uint8 i)   //写出对应的值
+  504          {
+  505   1        if(i==0)    //cut
+  506   1        {
+  507   2          switch(page)
+  508   2          {
+  509   3            case PID:
+  510   3            {
+  511   4                switch(row_count)
+  512   4                {
+  513   5                  case 0:
+  514   5                  {
+  515   6                    p_zero--;
+  516   6                    break;
+  517   6                  }
+  518   5                  case 1:
+  519   5                  {
+C251 COMPILER V5.60.0,  oled_menu                                                          27/12/23  12:51:36  PAGE 9   
+
+  520   6                    d_zero--;
+  521   6                    break;
+  522   6                  }
+  523   5                  case 2:
+  524   5                  {
+  525   6                    delta_p_sm--;
+  526   6                    break;
+  527   6                  }
+  528   5                  case 3:
+  529   5                  {
+  530   6                    delta_p_bst--;
+  531   6                    break;
+  532   6                  }
+  533   5                  case 4:
+  534   5                  {
+  535   6                    delta_d_sm--;
+  536   6                    break;
+  537   6                  }           
+  538   5                  case 5:
+  539   5                  {
+  540   6                    delta_d_bst--;
+  541   6                    break;
+  542   6                  }
+  543   5      
+  544   5                  case 6:
+  545   5                  {
+  546   6                    spd_kp--;
+  547   6                    break;
+  548   6                  }
+  549   5                  case 7:
+  550   5                  {
+  551   6                    spd_ki--;
+  552   6                    break;
+  553   6                  }
+  554   5                case 8:
+  555   5                {
+  556   6                  str_spd--;
+  557   6                  break;
+  558   6                }
+  559   5                case 9:
+  560   5                {
+  561   6                  roll_spd--;
+  562   6                  break;
+  563   6                }
+  564   5                case 10:
+  565   5                {
+  566   6                  max_err_bound-=1;
+  567   6                  break;
+  568   6                }
+  569   5                case 11:
+  570   5                {
+  571   6                  max_d_err_bound-=1;             
+  572   6                  break;
+  573   6                }
+  574   5                case 12:
+  575   5                {
+  576   6                  cross_idt-=50;
+  577   6                  break;
+  578   6                }
+  579   5                  default:
+  580   5                  {
+  581   6                    break;
+  582   6                  }
+  583   5                
+  584   5                }
+  585   4                break;
+C251 COMPILER V5.60.0,  oled_menu                                                          27/12/23  12:51:36  PAGE 10  
+
+  586   4            }
+  587   3            case roundabout_page:
+  588   3          {
+  589   4            switch(row_count)
+  590   4            {
+  591   5              case 0:
+  592   5              {
+  593   6                gyro_roll--;
+  594   6                break;
+  595   6              }
+  596   5              case 1:
+  597   5              {
+  598   6                at_trace_pro-=0.01;
+  599   6                break;
+  600   6              }
+  601   5              case 2:
+  602   5              {
+  603   6                out_pro-=0.01;
+  604   6                break;
+  605   6              }     
+  606   5              case 3:
+  607   5              {
+  608   6                integral_in-=1;
+  609   6                break;
+  610   6              }     
+  611   5              case 4:
+  612   5              {
+  613   6                integral_out-=1;
+  614   6                break;
+  615   6              }       
+  616   5              case 5:
+  617   5              {
+  618   6                roud_in_dif-=1;
+  619   6                break;
+  620   6              } 
+  621   5              case 6:
+  622   5              {
+  623   6                int_p-=1;
+  624   6                break;
+  625   6              }
+  626   5              case 7:
+  627   5              {
+  628   6                int_d-=1;
+  629   6                break;
+  630   6              }         
+  631   5              case 8:
+  632   5              {
+  633   6                roud_at_p-=1;
+  634   6                break;
+  635   6              }
+  636   5              case 9:
+  637   5              {
+  638   6                roud_at_i-=1;
+  639   6                break;
+  640   6              }   
+  641   5              case 10:
+  642   5              {
+  643   6                roud_gy_p-=1;
+  644   6                break;
+  645   6              }
+  646   5              case 11:
+  647   5              {
+  648   6                roud_gy_d-=1;
+  649   6                break;
+  650   6              }
+  651   5              case 12:
+C251 COMPILER V5.60.0,  oled_menu                                                          27/12/23  12:51:36  PAGE 11  
+
+  652   5              {
+  653   6                roud_spd-=1;
+  654   6                break;
+  655   6              }
+  656   5              case 13:
+  657   5              {
+  658   6                brim_int-=10;
+  659   6                break;
+  660   6              }
+  661   5              case 14:
+  662   5              {
+  663   6                mid_int-=10;
+  664   6                break;
+  665   6              }
+  666   5              
+  667   5              
+  668   5            }
+  669   4          break;
+  670   4          }
+  671   3            case pwm_factor:   //当在第三页
+  672   3            {
+  673   4              str_roll_judge-=0.1;
+  674   4              break;
+  675   4            }
+  676   3            case ele_list:
+  677   3            {
+  678   4              if(row_count!=0)   //调整个数
+  679   4              {
+  680   5                if(ele[row_count]>0)
+  681   5                ele[row_count]--;
+  682   5              }       
+  683   4              break;
+  684   4            }
+  685   3              
+  686   3            
+  687   3            
+  688   3            case kalman:
+  689   3            {
+  690   4              switch(row_count)
+  691   4              {
+  692   5                case 0:
+  693   5                {
+  694   6                  klm_R-=0.1;
+  695   6                  break;
+  696   6                }
+  697   5                case 1:
+  698   5                {
+  699   6                  klm_Q-=0.01;
+  700   6                  break;
+  701   6                } 
+  702   5                case 2:
+  703   5                {
+  704   6                  klm_B-=0.01;
+  705   6                  break;
+  706   6                }   
+  707   5              }
+  708   4              break;
+  709   4            }
+  710   3            default :
+  711   3            {
+  712   4              break;
+  713   4            }
+  714   3            break;
+  715   3          }
+  716   2          
+  717   2          
+C251 COMPILER V5.60.0,  oled_menu                                                          27/12/23  12:51:36  PAGE 12  
+
+  718   2        }
+  719   1      
+  720   1        else        //add
+  721   1        {
+  722   2            switch(page)
+  723   2            {
+  724   3              case PID:
+  725   3          {
+  726   4            switch(row_count)
+  727   4            {
+  728   5                case 0:
+  729   5                  {
+  730   6                    p_zero++;
+  731   6                    break;
+  732   6                  }
+  733   5                  case 1:
+  734   5                  {
+  735   6                    d_zero++;
+  736   6                    break;
+  737   6                  }
+  738   5                  case 2:
+  739   5                  {
+  740   6                    delta_p_sm++;
+  741   6                    break;
+  742   6                  }
+  743   5                  case 3:
+  744   5                  {
+  745   6                    delta_p_bst++;
+  746   6                    break;
+  747   6                  }
+  748   5                  case 4:
+  749   5                  {
+  750   6                    delta_d_sm++;
+  751   6                    break;
+  752   6                  }           
+  753   5                  case 5:
+  754   5                  {
+  755   6                    delta_d_bst++;
+  756   6                    break;
+  757   6                  }
+  758   5      
+  759   5                  case 6:
+  760   5                  {
+  761   6                    spd_kp++;
+  762   6                    break;
+  763   6                  }
+  764   5                  case 7:
+  765   5                  {
+  766   6                    spd_ki++;
+  767   6                    break;
+  768   6                  }
+  769   5                case 8:
+  770   5                {
+  771   6                  str_spd++;
+  772   6                  break;
+  773   6                }
+  774   5                case 9:
+  775   5                {
+  776   6                  roll_spd++;
+  777   6                  break;
+  778   6                }
+  779   5                case 10:
+  780   5                {
+  781   6                  max_err_bound+=1;
+  782   6                  break;
+  783   6                }
+C251 COMPILER V5.60.0,  oled_menu                                                          27/12/23  12:51:36  PAGE 13  
+
+  784   5                case 11:
+  785   5                {
+  786   6                  max_d_err_bound+=1;             
+  787   6                  break;
+  788   6                }
+  789   5                case 13:
+  790   5                {
+  791   6                  cross_idt+=50;
+  792   6                  break;
+  793   6                }
+  794   5                default:
+  795   5                {
+  796   6                  break;
+  797   6                }
+  798   5                }
+  799   4            
+  800   4              break;
+  801   4            
+  802   4          }
+  803   3            case roundabout_page:
+  804   3          {
+  805   4            switch(row_count)
+  806   4            {
+  807   5              case 0:
+  808   5              {
+  809   6                gyro_roll++;
+  810   6                break;
+  811   6              }
+  812   5              case 1:
+  813   5              {
+  814   6                at_trace_pro+=0.01;
+  815   6                break;
+  816   6              }
+  817   5              case 2:
+  818   5              {
+  819   6                out_pro+=0.01;
+  820   6                break;
+  821   6              }     
+  822   5              case 3:
+  823   5              {
+  824   6                integral_in+=1;
+  825   6                break;
+  826   6              }     
+  827   5              case 4:
+  828   5              {
+  829   6                integral_out+=1;
+  830   6                break;
+  831   6              }       
+  832   5              case 5:
+  833   5              {
+  834   6                roud_in_dif+=1;
+  835   6                break;
+  836   6              } 
+  837   5              case 6:
+  838   5              {
+  839   6                int_p+=1;
+  840   6                break;
+  841   6              }
+  842   5              case 7:
+  843   5              {
+  844   6                int_d+=1;
+  845   6                break;
+  846   6              }         
+  847   5              case 8:
+  848   5              {
+  849   6                roud_at_p+=1;
+C251 COMPILER V5.60.0,  oled_menu                                                          27/12/23  12:51:36  PAGE 14  
+
+  850   6                break;
+  851   6              }
+  852   5              case 9:
+  853   5              {
+  854   6                roud_at_i+=1;
+  855   6                break;
+  856   6              }   
+  857   5              case 10:
+  858   5              {
+  859   6                roud_gy_p+=1;
+  860   6                break;
+  861   6              }
+  862   5              case 11:
+  863   5              {
+  864   6                roud_gy_d+=1;
+  865   6                break;
+  866   6              }
+  867   5              case 12:
+  868   5              {
+  869   6                roud_spd+=1;
+  870   6                break;
+  871   6              }
+  872   5              case 13:
+  873   5              {
+  874   6                brim_int+=10;
+  875   6                break;
+  876   6              }
+  877   5              case 14:
+  878   5              {
+  879   6                mid_int+=10;
+  880   6                break;
+  881   6              }         
+  882   5              
+  883   5            }
+  884   4          break;
+  885   4          }
+  886   3            case motion:
+  887   3          {
+  888   4            if(on_off_motion[row_count]==1)
+  889   4            on_off_motion[row_count]=2;
+  890   4            else
+  891   4              on_off_motion[row_count]=1;
+  892   4            break;
+  893   4          }
+  894   3            case pwm_factor:   //当在第三页
+  895   3            {
+  896   4              str_roll_judge+=0.1;
+  897   4              break;
+  898   4            }
+  899   3            case ele_list:
+  900   3            {
+  901   4              if(row_count!=1)
+  902   4              {
+  903   5                if(row_count!=0)
+  904   5              {
+  905   6                if(ele[row_count]!=max_ele_num)
+  906   6                ele[row_count]++;
+  907   6                else
+  908   6                ele[row_count]=0;
+  909   6              }
+  910   5              else
+  911   5              {
+  912   6                if(ele[row_count]==1)
+  913   6                  ele[row_count]=0;
+  914   6                else
+  915   6                  ele[row_count]=1;
+C251 COMPILER V5.60.0,  oled_menu                                                          27/12/23  12:51:36  PAGE 15  
+
+  916   6              }
+  917   5              }
+  918   4              else 
+  919   4                ele[row_count]++;
+  920   4              
+  921   4              break;
+  922   4            }
+  923   3            case kalman:
+  924   3            {
+  925   4              switch(row_count)
+  926   4              {
+  927   5                case 0:
+  928   5                {
+  929   6                  klm_R+=0.1;
+  930   6                  break;
+  931   6                }
+  932   5                case 1:
+  933   5                {
+  934   6                  klm_Q+=0.01;
+  935   6                  break;
+  936   6                } 
+  937   5                case 2:
+  938   5                {
+  939   6                  klm_B+=0.01;
+  940   6                  break;
+  941   6                }     
+  942   5              }
+  943   4      
+  944   4              break;
+  945   4            }
+  946   3            default :
+  947   3            {
+  948   4              break;
+  949   4            }
+  950   3        }
+  951   2      }
+  952   1        }
+  953          void key_handle_short(uint8 key_num)
+  954          {
+  955   1        uint8 max_page_sort=7;
+  956   1        switch(key_num)
+  957   1        {
+  958   2          case 0:    //up
+  959   2          {
+  960   3            if(page!=init)
+  961   3            {if(flag_in!=1)
+  962   4            {
+  963   5              
+  964   5              if(row_count<=0)
+  965   5                row_count=0;
+  966   5              else
+  967   5                row_count--;
+  968   5              clear_flag=1;
+  969   5              if(row_count>=7)
+  970   5              {
+  971   6                if(row_count<14)
+  972   6                sign_count=row_count%7;
+  973   6              else
+  974   6                sign_count=7+row_count%7;
+  975   6              }
+  976   5            }
+  977   4            }
+  978   3            
+  979   3            break;
+  980   3          }
+  981   2          case 1:    //down
+C251 COMPILER V5.60.0,  oled_menu                                                          27/12/23  12:51:36  PAGE 16  
+
+  982   2          {
+  983   3            if(page!=init)
+  984   3            {
+  985   4              if(flag_in!=1)
+  986   4            {
+  987   5              row_count++;
+  988   5      
+  989   5                if(row_count>7)
+  990   5                {
+  991   6                  if(row_count<14)
+  992   6                sign_count=row_count%7;
+  993   6              else
+  994   6                sign_count=7+row_count%7;
+  995   6                }
+  996   5              if(page==sort)
+  997   5              {
+  998   6                if(row_count>=max_page_sort)
+  999   6                  row_count--;
+ 1000   6                  
+ 1001   6              }
+ 1002   5              if(page==PID)    //第二页的情况
+ 1003   5                {
+ 1004   6                  if(row_count>=max_page_pid)    //当滑到底
+ 1005   6                  
+ 1006   6              {
+ 1007   7                sign_count=max_page_pid-7;     //为了滑到下面去也不会继续往下显示
+ 1008   7                row_count--;   //与前面的自增相抵消
+ 1009   7              }
+ 1010   6            }
+ 1011   5              if(page==roundabout_page)    //第五页的情况
+ 1012   5                {
+ 1013   6                  if(row_count>=max_page_roundabout)    //当滑到底
+ 1014   6                  
+ 1015   6              {
+ 1016   7                sign_count=max_page_roundabout-7;     //为了滑到下面去也不会继续往下显示
+ 1017   7                row_count--;   //与前面的自增相抵消
+ 1018   7              }
+ 1019   6            }         
+ 1020   5                clear_flag=1;
+ 1021   5            
+ 1022   5            }
+ 1023   4            }
+ 1024   3            break;
+ 1025   3          }
+ 1026   2          case 2:   //left
+ 1027   2          {
+ 1028   3            clear_flag=1;
+ 1029   3            if(page!=init)  //当不是  
+ 1030   3            {
+ 1031   4              if(flag_in==0)
+ 1032   4            {
+ 1033   5              if(page!=sort)
+ 1034   5              {
+ 1035   6                sign_count=0;
+ 1036   6                row_count=last_row_count;
+ 1037   6                clear_flag=1;
+ 1038   6                page=sort;     //到挑选进入sort环节
+ 1039   6              }
+ 1040   5              else
+ 1041   5              {
+ 1042   6                sign_count=0;
+ 1043   6                row_count=0;
+ 1044   6                last_row_count=0;
+ 1045   6                clear_flag=1;
+ 1046   6                page=init;          
+ 1047   6              }
+C251 COMPILER V5.60.0,  oled_menu                                                          27/12/23  12:51:36  PAGE 17  
+
+ 1048   5              //通过独立按键2来回到初始页面
+ 1049   5            }
+ 1050   4            
+ 1051   4            else
+ 1052   4            {
+ 1053   5              change_num(0);   //改变对应的值
+ 1054   5            }
+ 1055   4          }
+ 1056   3            else
+ 1057   3            {
+ 1058   4              clear_flag=1;
+ 1059   4              volt=adc_once(ADC_P14,ADC_10BIT)/37.3;    //得到采集的电感值
+ 1060   4              
+ 1061   4            }
+ 1062   3              
+ 1063   3            break;
+ 1064   3          }
+ 1065   2          case 3:   //right
+ 1066   2          {
+ 1067   3            clear_flag=1;
+ 1068   3      
+ 1069   3              if(page==init)
+ 1070   3            {
+ 1071   4              sign_count=0;
+ 1072   4              row_count=0;
+ 1073   4              clear_flag=1;
+ 1074   4              page=sort;
+ 1075   4            
+ 1076   4            }
+ 1077   3            else if(page==sort)
+ 1078   3            {
+ 1079   4              
+ 1080   4              clear_flag=1;
+ 1081   4              if(row_count==0)    //进入PID界面
+ 1082   4                page=PID;
+ 1083   4              else if(row_count==1)
+ 1084   4                page=roundabout_page;
+ 1085   4              else if(row_count==2)
+ 1086   4                page=pwm_factor;
+ 1087   4              else if(row_count==3)
+ 1088   4                page=motion;
+ 1089   4              else if(row_count==4)
+ 1090   4                page=ele_list;
+ 1091   4              else if(row_count==5)
+ 1092   4                page=kalman;
+ 1093   4              last_row_count=row_count;
+ 1094   4              sign_count=0;
+ 1095   4              row_count=0;
+ 1096   4            
+ 1097   4            }
+ 1098   3            
+ 1099   3            else if(flag_in==1)
+ 1100   3            {
+ 1101   4              change_num(1);
+ 1102   4            }
+ 1103   3            break;
+ 1104   3          }
+ 1105   2          case 4:   //mid
+ 1106   2          {
+ 1107   3            if(flag_in==1)
+ 1108   3              flag_in=0;
+ 1109   3            else flag_in=1;
+ 1110   3            clear_flag=1;
+ 1111   3            break;
+ 1112   3          }
+ 1113   2          case 5:   //独立按键1
+C251 COMPILER V5.60.0,  oled_menu                                                          27/12/23  12:51:36  PAGE 18  
+
+ 1114   2          {
+ 1115   3            if(page!=init)
+ 1116   3            {
+ 1117   4              flash_write();     //将数据写进str中
+ 1118   4              ele_init();   //重新赋值一次
+ 1119   4              oled_clear();
+ 1120   4              oled_p6x8str(64,4,"flashed");
+ 1121   4              delay_ms(500);
+ 1122   4              oled_clear();
+ 1123   4            }
+ 1124   3            else
+ 1125   3            {
+ 1126   4              
+ 1127   4              if((gyro_motion&1)==1)
+ 1128   4              {
+ 1129   5                oled_clear();
+ 1130   5              oled_p6x8str(64,4,"gyro_started");
+ 1131   5              //get_gyro_err();   //重新把误差去除
+ 1132   5              gyro_motion++;   //打开陀螺仪
+ 1133   5              delay_ms(100);
+ 1134   5              oled_clear();
+ 1135   5              }
+ 1136   4              else
+ 1137   4              {
+ 1138   5               oled_clear();
+ 1139   5               oled_p6x8str(64,4,"gyro_closed");
+ 1140   5               //get_gyro_err();   //重新把误差去除
+ 1141   5                gyro_motion++;   //打开陀螺仪
+ 1142   5               delay_ms(100);
+ 1143   5               oled_clear();        
+ 1144   5              }
+ 1145   4            }
+ 1146   3            
+ 1147   3            
+ 1148   3            break;
+ 1149   3          }
+ 1150   2          case 6:   //独立按键2
+ 1151   2          {
+ 1152   3            if(start_flag==0)
+ 1153   3            {
+ 1154   4              if(page!=init)
+ 1155   4            {
+ 1156   5              page=init;     //回到首页
+ 1157   5              last_row_count=0;
+ 1158   5              row_count=0;
+ 1159   5              sign_count=0;
+ 1160   5              clear_flag=1;
+ 1161   5            }
+ 1162   4              else
+ 1163   4            {
+ 1164   5              fuzzy_init();  //把fuzzy参数放到计算中去
+ 1165   5              delay_ms(500);   //按下按键延迟发车
+ 1166   5              clear_flag=1;
+ 1167   5              start_flag=1;
+ 1168   5      
+ 1169   5            }
+ 1170   4            }
+ 1171   3            else
+ 1172   3            {
+ 1173   4              start_flag=0;
+ 1174   4              clear_flag=1;
+ 1175   4            }
+ 1176   3              
+ 1177   3            
+ 1178   3            break;
+ 1179   3          }
+C251 COMPILER V5.60.0,  oled_menu                                                          27/12/23  12:51:36  PAGE 19  
+
+ 1180   2        }
+ 1181   1      }
+ 1182          void key_handle_long(uint8 key_num)
+ 1183          {
+ 1184   1        if(key_num==6)    //按独立按键2时
+ 1185   1        {
+ 1186   2          flash_read();    //重新读取一次，回到原始数值
+ 1187   2          oled_clear();
+ 1188   2          oled_p6x8str(64,4,"reflashed");
+ 1189   2          oled_clear();
+ 1190   2          delay_ms(500);
+ 1191   2        }
+ 1192   1        else
+ 1193   1        {
+ 1194   2          delay_ms(10);
+ 1195   2          key_handle_short(key_num);
+ 1196   2      
+ 1197   2        }
+ 1198   1      }
+ 1199          void key_handle(void)
+ 1200          {
+ 1201   1        uint8 key_num;     //用来计算第几个按键
+ 1202   1        
+ 1203   1        for(key_num=0;key_num<key_number;key_num++)
+ 1204   1        {
+ 1205   2          switch(key_state[key_num])
+ 1206   2        {
+ 1207   3          case 0:     //release
+ 1208   3          {
+ 1209   4            break;
+ 1210   4          }
+ 1211   3          case 1:     //short    
+ 1212   3          {
+ 1213   4            key_handle_short(key_num);
+ 1214   4            break;
+ 1215   4          } 
+ 1216   3          case 2:     //long
+ 1217   3          {
+ 1218   4            
+ 1219   4            key_handle_long(key_num);    //每隔一段时间进行一次改变
+ 1220   4            break;
+ 1221   4          }
+ 1222   3        }
+ 1223   2      }
+ 1224   1      
+ 1225   1      }
+ 1226          
+ 1227          
+ 1228          void oled_menu(void)
+ 1229          {
+ 1230   1        key_handle();
+ 1231   1        if(start_flag==0)
+ 1232   1        oled_show_image();
+ 1233   1        else
+ 1234   1        {
+ 1235   2          page_init();  //显示几个电感值方便观察
+ 1236   2          oled_p6x8str(64,4,"Running");
+ 1237   2        }
+ 1238   1      }
+ 1239          
+ 1240          
+ 1241          
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =      7363     ------
+C251 COMPILER V5.60.0,  oled_menu                                                          27/12/23  12:51:36  PAGE 20  
+
+  ecode size           =    ------     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =    ------     ------
+  xdata-const size     =    ------     ------
+  edata size           =        29     ------
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =       674     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

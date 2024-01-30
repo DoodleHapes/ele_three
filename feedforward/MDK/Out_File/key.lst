@@ -1,0 +1,182 @@
+C251 COMPILER V5.60.0,  key                                                                21/12/23  21:20:31  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE key
+OBJECT MODULE PLACED IN .\Out_File\key.obj
+COMPILER INVOKED BY: C:\keil MCK\C251\BIN\C251.EXE key.c XSMALL INTR2 WARNINGLEVEL(3) OPTIMIZE(0,SPEED) BROWSE INCDIR(..
+                    -\..\Libraries\libraries;..\..\Libraries\seekfree_libraries;..\..\Libraries\seekfree_peripheral;..\CODE;..\USER\inc;..\US
+                    -ER\src) DEBUG PRINT(.\Out_File\key.lst) TABS(2) OBJECT(.\Out_File\key.obj) 
+
+stmt  level    source
+
+    1          #include "key.h"
+    2          #include "SEEKFREE_OLED.h"
+    3          #include "headfile.h"
+    4          
+    5          static uint32               scanner_period = 0;                                 // °´¼üµÄÉ¨ÃèÖÜÆÚ
+    6          static uint32               key_press_time[7];                         // °´¼üÐÅºÅ³ÖÐøÊ±³¤
+    7          
+    8          uint8 key_number=7;
+    9          uint32 interr_counter[7]={0};    //³¤¶Ì°´Ê¶±ð
+   10          uint16 key_state[7]={0};      //°´¼ü¸öÊý¿ÉÐÞ¸Ä£¬ÉÏÏÂ×óÓÒÖÐ¶ÀÁ¢°´¼ü1¶ÀÁ¢°´¼ü2£¬0Îª³õÊ¼£¬1Îª¶Ì°´£¬2Îª³¤°´
+   11          uint16 last_key_state[7]={0};
+   12          
+   13          
+   14          void key_init(uint32 period)    //ÖÐ¶ÏµÄÖÜÆÚÊ¹ÓÃperiod
+   15          {
+   16   1        uint8 i;
+   17   1        scanner_period=period;
+   18   1        for(i=0;i<key_number;i++)   //¶Ô°´¼ü×´Ì¬½øÐÐ³õÊ¼»¯
+   19   1        {
+   20   2          key_state[i]=KEY_RELEASE;
+   21   2          interr_counter[i]=0;
+   22   2        }
+   23   1        
+   24   1      }
+   25          
+   26          uint8 gpio_get_level(uint8 i)   //Í¨¹ýiÀ´Ö±½ÓÓÃswitchÖ¸Ïò¶ÔÓ¦Òý½Å
+   27          {
+   28   1        uint8 gpio_level;
+   29   1        switch(i)
+   30   1        {
+   31   2          case 0:
+   32   2          {
+   33   3            if(KEY_UP==1)
+   34   3              
+   35   3            gpio_level=1;
+   36   3            else gpio_level=0;
+   37   3            break;
+   38   3            
+   39   3          }
+   40   2          case 1:
+   41   2          {
+   42   3            if(KEY_DOWN==1)
+   43   3            
+   44   3            gpio_level=1;
+   45   3            else gpio_level=0;
+   46   3            break;
+   47   3          }
+   48   2          case 2:
+   49   2          {
+   50   3            
+   51   3            if(KEY_LEFT==1)
+   52   3            gpio_level=1;
+   53   3            else gpio_level=0;
+   54   3            break;
+   55   3          }
+   56   2          case 3:
+   57   2          {
+C251 COMPILER V5.60.0,  key                                                                21/12/23  21:20:31  PAGE 2   
+
+   58   3            
+   59   3            if(KEY_RIGHT==1)
+   60   3            gpio_level=1;
+   61   3            else gpio_level=0;
+   62   3            break;
+   63   3          }
+   64   2          case 4:
+   65   2          {
+   66   3            
+   67   3            if(KEY_MID==1)
+   68   3            gpio_level=1;
+   69   3            else gpio_level=0;
+   70   3            break;
+   71   3          }
+   72   2          case 5:
+   73   2          {
+   74   3            
+   75   3            if(KEY_1==1)
+   76   3            gpio_level=1;
+   77   3            else gpio_level=0;
+   78   3            break;
+   79   3          }
+   80   2          case 6:
+   81   2          
+   82   2          {
+   83   3            if(KEY_2==1)
+   84   3            
+   85   3            gpio_level=1;
+   86   3            else gpio_level=0;
+   87   3            break;
+   88   3          }
+   89   2          
+   90   2          
+   91   2            
+   92   2        }
+   93   1        
+   94   1        
+   95   1        return gpio_level;
+   96   1      }
+   97          
+   98          void key_scanner(void)
+   99          {
+  100   1        //ÓÐ¿ÉÄÜ°´1´Î»áÓÐÔö¼ÓºÃ¼¸¸öÊý×ÖµÄÐ§¹û£¬Èç¹û´æÔÚ£¬¾ÍÔö¼ÓÒ»¸ö°´¼ü×´Ì¬±ä»¯µÄ±êÖ¾Î»
+  101   1        uint8 i;
+  102   1        
+  103   1        for(i=0;i<key_number;i++)   
+  104   1        {
+  105   2          if(KEY_RELEASE_LEVEL != gpio_get_level(i))       //µ±°´ÏÂ°´¼üÊ±£¬¶Ô°´¼ü½øÐÐºê¶¨Òå£¬´Ó¶ø¿ÉÒÔÓÃiÀ´½øÐÐÇø·
+             -Ö
+  106   2          {
+  107   3            interr_counter[i]++;
+  108   3          
+  109   3              
+  110   3          if(interr_counter[i]*scanner_period>=KEY_LONG_PRESS_PERIOD)
+  111   3          key_state[i]=KEY_LONG_PRESS;
+  112   3          last_key_state[i]=KEY_LONG_PRESS;   
+  113   3          
+  114   3          }
+  115   2          else    //°´¼üÊÍ·Å
+  116   2          {
+  117   3                  if((KEY_LONG_PRESS != key_state[i]) && (KEY_MAX_SHOCK_PERIOD <= scanner_period*interr_counter
+             -[i])&&last_key_state[i]!=KEY_SHORT_PRESS)
+  118   3                  {
+  119   4                    key_state[i] = KEY_SHORT_PRESS;     //Ö»»áÖ´ÐÐÒ»´Î
+  120   4                    last_key_state[i]=KEY_SHORT_PRESS;
+  121   4                    
+C251 COMPILER V5.60.0,  key                                                                21/12/23  21:20:31  PAGE 3   
+
+  122   4                  
+  123   4                    
+  124   4                    
+  125   4                  }
+  126   3                  else
+  127   3                  {
+  128   4                      key_state[i] = KEY_RELEASE;
+  129   4                    last_key_state[i]=KEY_RELEASE;
+  130   4                  }     
+  131   3          
+  132   3          interr_counter[i]=0;    //½«°´¼ü¼ÆÊýÇëÁã
+  133   3          }
+  134   2        } 
+  135   1      }
+  136          
+  137          
+  138          
+  139          
+  140          
+  141          
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =       656     ------
+  ecode size           =    ------     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =    ------     ------
+  xdata-const size     =    ------     ------
+  edata size           =        97     ------
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =        81     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

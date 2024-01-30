@@ -1,0 +1,78 @@
+C251 COMPILER V5.60.0,  kalman_struct                                                      01/10/23  21:00:39  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE kalman_struct
+OBJECT MODULE PLACED IN .\Out_File\kalman_struct.obj
+COMPILER INVOKED BY: C:\keil MCK\C251\BIN\C251.EXE kalman_struct.c XSMALL INTR2 WARNINGLEVEL(3) OPTIMIZE(0,SPEED) BROWSE
+                    - INCDIR(..\..\Libraries\libraries;..\..\Libraries\seekfree_libraries;..\..\Libraries\seekfree_peripheral;..\CODE;..\USER
+                    -\inc;..\USER\src) DEBUG PRINT(.\Out_File\kalman_struct.lst) TABS(2) OBJECT(.\Out_File\kalman_struct.obj) 
+
+stmt  level    source
+
+    1          #include "kalman_struct.h"
+    2          
+    3          struct Kalman_Typedef
+    4          {
+    5              /*不用动*/
+    6              float LastP;//上次估算协方差
+    7              float Now_P;//当前估算协方差
+    8              float out;//卡尔曼滤波器输出
+    9              float Kg;//卡尔曼增益
+   10              float Q;
+   11              float R;
+   12          }klm;
+   13          
+   14          float KalmanFilter(float input)
+   15          {
+   16   1          
+   17   1        float out;
+   18   1          //预测协方差方程：k时刻系统估算协方差 = k-1时刻的系统协方差 + 过程噪声协方差
+   19   1          klm.Now_P = klm.LastP + klm.Q;
+   20   1          //卡尔曼增益方程：卡尔曼增益 = k时刻系统估算协方差 / （k时刻系统估算协方差 + 观测噪声协方差）
+   21   1          klm.Kg = klm.Now_P / (klm.Now_P + klm.R);
+   22   1          //更新最优值方程：k时刻状态变量的最优值 = 状态变量的预测值 + 卡尔曼增益 * （测量值 - 状态变量的预测值
+             -）
+   23   1          klm.out = klm.out + klm.Kg * (input -klm.out);//因为这一次的预测值就是上一次的输出值
+   24   1          //更新协方差方程: 本次的系统协方差赋给 klm->LastP 为下一次运算准备。
+   25   1          klm.LastP = (1-klm.Kg) * klm.Now_P;
+   26   1        out=klm.out;
+   27   1        
+   28   1        return (klm.out);
+   29   1      }
+   30          
+   31          void Kalman_Init(void)//温度klm_Q=0.01 klm_R=0.25
+   32          {
+   33   1        klm.LastP=0.02;   //上次估算协方差
+   34   1        klm.Now_P=0;      //当前估算协方差
+   35   1        klm.out=0;        //卡尔曼滤波器输出
+   36   1        klm.Kg=0;       //卡尔曼增益
+   37   1        klm.Q=0;      //Q:过程噪声协方差 Q参数调滤波后的曲线平滑程度，Q越小越平滑;
+   38   1        klm.R=0;      //R:观测噪声协方差 R参数调整滤波后的曲线与实测曲线的相近程度，R越小越接近(收敛越快)
+   39   1      }
+   40          
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =       156     ------
+  ecode size           =    ------     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =    ------     ------
+  xdata-const size     =    ------     ------
+  edata size           =        32     ------
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+C251 COMPILER V5.60.0,  kalman_struct                                                      01/10/23  21:00:39  PAGE 2   
+
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =    ------     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

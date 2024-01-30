@@ -1,0 +1,75 @@
+C251 COMPILER V5.60.0,  kalman                                                             01/10/23  20:57:41  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE kalman
+OBJECT MODULE PLACED IN .\Out_File\kalman.obj
+COMPILER INVOKED BY: C:\keil MCK\C251\BIN\C251.EXE kalman.c XSMALL INTR2 WARNINGLEVEL(3) OPTIMIZE(0,SPEED) BROWSE INCDIR
+                    -(..\..\Libraries\libraries;..\..\Libraries\seekfree_libraries;..\..\Libraries\seekfree_peripheral;..\CODE;..\USER\inc;..
+                    -\USER\src) DEBUG PRINT(.\Out_File\kalman.lst) TABS(2) OBJECT(.\Out_File\kalman.obj) 
+
+stmt  level    source
+
+    1          /*
+    2          卡尔曼滤波器
+    3          整理By 乙酸氧铍
+    4          */
+    5          #include "kalman.h"
+    6          float klm_Now_P[2];
+    7          float klm_Kg[2];
+    8          float klm_out[2];
+    9          float klm_LastP[2];
+   10          float klm_Q[2];
+   11          float klm_R[2];
+   12          float klm_B[2];
+   13          void KalmanFilter(float input)
+   14          {
+   15   1          
+   16   1          //预测协方差方程：k时刻系统估算协方差 = k-1时刻的系统协方差 + 过程噪声协方差
+   17   1          klm_Now_P = klm_LastP + klm_Q;
+*** ERROR C82 IN LINE 17 OF kalman.c: '+': two pointers
+   18   1          //卡尔曼增益方程：卡尔曼增益 = k时刻系统估算协方差 / （k时刻系统估算协方差 + 观测噪声协方差）
+   19   1          klm_Kg = klm_Now_P / (klm_Now_P + klm_R);
+*** ERROR C82 IN LINE 19 OF kalman.c: '+': two pointers
+   20   1          //更新卡尔曼输出
+   21   1          klm_out=klm_out+klm_B;
+*** ERROR C82 IN LINE 21 OF kalman.c: '+': two pointers
+   22   1          //更新最优值方程：k时刻状态变量的最优值 = 状态变量的预测值 + 卡尔曼增益 * （测量值 - 状态变量的预测值
+             -）
+   23   1          klm_out = klm_out + klm_Kg * (input -klm_out);//因为这一次的预测值就是上一次的输出值
+*** ERROR C83 IN LINE 23 OF kalman.c: '-': incompatible types
+   24   1          //更新协方差方程: 本次的系统协方差赋给 klm->LastP 为下一次运算准备。
+   25   1          klm_LastP = (1-klm_Kg) * klm_Now_P;
+*** ERROR C83 IN LINE 25 OF kalman.c: '-': incompatible types
+   26   1      
+   27   1      
+   28   1      }
+   29          
+   30          void Kalman_Init(void)//温度klm_Q=0.01 klm_R=0.25
+   31          {
+   32   1        //0代表左，1代表右
+   33   1        klm_LastP[0]=0.02;    //上次估算协方差(在调节噪声Q之前，要给一个初值，在开始调节Q之后可以将此初值赋为0看看
+             -效果)
+   34   1        klm_Now_P[0]=0;     //当前估算协方差
+   35   1        klm_B[0]=0;         //过程噪声期望（最后调,值应该相当的小甚至为0）
+   36   1        klm_out[0]=0;       //卡尔曼滤波器输出
+   37   1        klm_Kg[0]=0;        //卡尔曼增益
+   38   1        klm_Q[0]=0;     //Q:过程噪声协方差 Q参数调滤波后的曲线平滑程度，Q越小越平滑; （次调）
+   39   1        klm_R[0]=0;     //R:观测噪声协方差 R参数调整滤波后的曲线与实测曲线的相近程度，R越小越接近(收敛越快）最先调
+   40   1      
+   41   1      
+   42   1        klm_LastP[1]=0.02;    //上次估算协方差(在调节噪声Q之前，要给一个初值，在开始调节Q之后可以将此初值赋为0看看
+             -效果)
+   43   1        klm_Now_P[1]=0;     //当前估算协方差
+   44   1        klm_B[1]=0;         //过程噪声期望（最后调,值应该相当的小甚至为0）
+   45   1        klm_out[1]=0;       //卡尔曼滤波器输出
+   46   1        klm_Kg[1]=0;        //卡尔曼增益
+   47   1        klm_Q[1]=0;     //Q:过程噪声协方差 Q参数调滤波后的曲线平滑程度，Q越小越平滑; （次调）
+   48   1        klm_R[1]=0;     //R:观测噪声协方差 R参数调整滤波后的曲线与实测曲线的相近程度，R越小越接近(收敛越快）最先调
+             -  
+C251 COMPILER V5.60.0,  kalman                                                             01/10/23  20:57:41  PAGE 2   
+
+   49   1      }
+   50          
+   51          
+
+C251 COMPILATION COMPLETE.  0 WARNING(S),  5 ERROR(S)

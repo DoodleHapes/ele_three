@@ -1,0 +1,594 @@
+C251 COMPILER V5.60.0,  pid_contorl                                                        27/12/23  13:07:48  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE pid_contorl
+OBJECT MODULE PLACED IN .\Out_File\pid_contorl.obj
+COMPILER INVOKED BY: C:\keil MCK\C251\BIN\C251.EXE pid_contorl.c XSMALL INTR2 WARNINGLEVEL(3) OPTIMIZE(0,SPEED) BROWSE I
+                    -NCDIR(..\..\Libraries\libraries;..\..\Libraries\seekfree_libraries;..\..\Libraries\seekfree_peripheral;..\CODE;..\USER\i
+                    -nc;..\USER\src) DEBUG PRINT(.\Out_File\pid_contorl.lst) TABS(2) OBJECT(.\Out_File\pid_contorl.obj) 
+
+stmt  level    source
+
+    1          #include "pid_control.h"
+    2          #include "math.h"
+    3          #include "common.h"
+    4          #include "zf_adc.h"
+    5          #include "flash.h"
+    6          #include "oled_menu.h"
+    7          #include "encoder.h"
+    8          #include "gyro.h"
+    9          #include "fuzzy_control.h"
+   10          
+   11          float encoder_integral_in=0;
+   12          float encoder_integral_out=0;
+   13          float last_spd_out_l=0;
+   14          float last_spd_out_r=0;
+   15          float last_err_spd_r=0;
+   16          float last_err_spd_l=0;
+   17          float err_spd_r=0;
+   18          float err_spd_l=0;
+   19          float gyro_out_pos=0;
+   20          float pos_pid_out=0;
+   21          float init_Angle=0;
+   22          float Finish_Angle=0;
+   23          
+   24          //ÐèÒªµ÷ÕûµÄ
+   25          //Õý×ª×ÜÊÇÇáÒ×´ïµ½ÏÞ·ù£¬µ¼ÖÂ¹ì¼£²»ÎÈ¶¨
+   26          float err_induct;
+   27          float last_err_induct;
+   28          float d_err_induct;
+   29          
+   30          uint8 is_roundabout_flag=0;
+   31          float Angle=0;
+   32          float Angle_err=0;
+   33          float Last_Angle=0;
+   34          
+   35          float Last_Angle_err=0;
+   36          //duty
+   37          float duty_left=0;
+   38          float duty_right=0;
+   39          int32 convert_l=0;
+   40          int32 convert_r=0;
+   41          
+   42          
+   43          
+   44          uint8 ele_count=0;
+   45          
+   46          
+   47          //Æ½·½¸ù
+   48          float god_Sqrt(float x)
+   49          {
+   50   1        
+   51   1          float xhalf = 0.5f * x;
+   52   1          int32 i = *(int32*)&x;
+   53   1          i = 0x5f3759df - (i >> 1);
+   54   1          x = *(float*)&i;
+   55   1          x = x * (1.5f - xhalf * x * x);
+   56   1        //¾«¶ÈÔÚ´ËÓ¦¸Ã¹»ÓÃÁË
+   57   1          //x = x * (1.5f - xhalf * x * x);
+C251 COMPILER V5.60.0,  pid_contorl                                                        27/12/23  13:07:48  PAGE 2   
+
+   58   1          //x = x * (1.5f - xhalf * x * x);
+   59   1      
+   60   1          return 1 / x;
+   61   1      }
+   62          void err_get(void)
+   63          {
+   64   1        last_err_induct=err_induct;
+   65   1        //err_induct>0Ê±£¬Ð¡³µÏòÓÒÆ«
+   66   1        if((induct2_filter+induct3_filter)!=0)
+   67   1        {
+   68   2      
+   69   2          //err_induct=((induct1_filter-induct4_filter)*3000)/pow((induct2_filter+induct3_filter),1.8);
+   70   2          //¸ùºÅ²î±ÈºÏ£¬ÓÃÓÚÁ½ºáÁ½Ð±£¬¸üÏßÐÔ,mid600,brim270
+   71   2          err_induct=((god_Sqrt(induct1_filter)-god_Sqrt(induct4_filter))*1000)/(induct2_filter+induct3_filter);
+   72   2          //
+   73   2          //err_induct=(induct1_filter-induct4_filter)/(induct2_filter+induct3_filter)*(induct2_filter+induct3_fi
+             -lter);
+   74   2          
+   75   2            
+   76   2        }
+   77   1        else
+   78   1          err_induct=0;
+   79   1        if(err_induct>max_err_bound)
+   80   1          err_induct=max_err_bound;
+   81   1        else if(err_induct<-max_err_bound)
+   82   1          err_induct=-max_err_bound;
+   83   1        
+   84   1        
+   85   1        d_err_induct=err_induct-last_err_induct;
+   86   1        
+   87   1      //  if(d_err_induct>max_d_err_bound)
+   88   1      //    err_induct=max_d_err_bound;
+   89   1      //  else if(d_err_induct<-max_d_err_bound)
+   90   1      //    err_induct=-max_d_err_bound;  
+   91   1      //  
+   92   1      //  if(d_err_induct>max_d_err)
+   93   1      //    max_d_err=d_err_induct;
+   94   1      //  if(max_d_err>6)
+   95   1      //    max_d_err=0;
+   96   1        
+   97   1        fuzzy_pid(err_induct,d_err_induct);
+   98   1      
+   99   1        //printf("%f,%f\n",induct1_filter,induct4_filter);
+  100   1      }
+  101          void ele_init(void)
+  102          {
+  103   1        if(ele_dir==0)
+  104   1          ele_count=0;
+  105   1        else
+  106   1          ele_count=ele_num-1;
+  107   1      }
+  108          
+  109          
+  110          
+  111          //roundabout
+  112          
+  113          uint8 roudabout_judge(void)
+  114          {
+  115   1        uint8 roudabout_flag=0;
+  116   1        if(induct2_filter>=mid_int&&induct3_filter>=mid_int&&induct1_filter>=brim_int&&induct4_filter>=brim_int)
+             -  //¸ø²îËÙ¿´err_inductÕý¸º
+  117   1        {
+  118   2          roudabout_flag=1;    //½«»·µºÔªËØÖÃ1
+  119   2          if(is_roundabout_flag==0)
+  120   2            is_roundabout_flag=1;
+  121   2        }
+C251 COMPILER V5.60.0,  pid_contorl                                                        27/12/23  13:07:48  PAGE 3   
+
+  122   1        
+  123   1        return roudabout_flag;
+  124   1      }  //ÊÇ»·µºreturn 1
+  125          void factor_judgement(void)
+  126          {
+  127   1        static factor_judge_enum last_flag;
+  128   1        last_flag=factor_flag;
+  129   1      
+  130   1        if(ele[ele_count+2]!=0&&(roudabout_judge()||is_roundabout_flag==1))  //µ±»·µºÅÐ¶¨Îª2×´Ì¬Ê±£¬Îª³ö»·£¬´ËÊ±
+             -½øÈëÖ±µÀÍäµÀÅÐ¶Ï
+  131   1        {
+  132   2          factor_flag=roundabout;    //»·µºµÄÅÐ¶¨Ííµã²¹³ä
+  133   2          if(last_flag!=roundabout)   //µÚÒ»´ÎÅÐ¶ÏÎª»·µº
+  134   2          {
+  135   3            init_Angle=Angle;       //¼ÇÂ¼µ±Ç°ÍÓÂÝÒÇµÄÖµ
+  136   3          if(ele[ele_count+2]==1)   //´ËÇé¿öÎª×ó×ª
+  137   3          Finish_Angle=Angle+gyro_roll;  //½áÊøÔ²»·Ê±µÄ½Ç¶È
+  138   3          else   //ÓÒ×ªÊ±¼õÉÙ
+  139   3          Finish_Angle=Angle-gyro_roll;
+  140   3          Angle_err=0;    //°ÑAngel_errÖÃÁã
+  141   3          
+  142   3      
+  143   3            
+  144   3          }
+  145   2      
+  146   2        }
+  147   1        else if(factor_flag==cross||(induct5_filter>=cross_idt&&induct6_filter>=cross_idt))  //ÔÝÊ±¾ÍÕâ¸öÌõ¼þ£¬Ê
+             -úµç¸ÐÔÝ²»ÓÃÀ´×÷Ç°Õ°Ô¤²â¹¤×÷
+  148   1        {
+  149   2          factor_flag=cross;
+  150   2          if(err_induct>-str_roll_judge||err_induct<str_roll_judge)  //ÅÐ¶ÏÎªÊ®×Öºó£¬ËÄµç¸ÐÎó²îÎªÖ±µÀÊ±ÔÙ»Ö¸´Õý³£
+             -Ñ­¼£
+  151   2            factor_flag=stright;
+  152   2        }
+  153   1        else if(err_induct<-str_roll_judge||err_induct>str_roll_judge)
+  154   1        {
+  155   2          factor_flag=roll;
+  156   2        }
+  157   1        else 
+  158   1        {
+  159   2          factor_flag=stright;
+  160   2                
+  161   2        }
+  162   1        
+  163   1      }
+  164          void pos_control(void)
+  165          {
+  166   1          
+  167   1      
+  168   1          if(factor_flag!=roundabout)
+  169   1        {
+  170   2          //ÓÒ×ª½Ç¶È¼õÐ¡
+  171   2          pos_pid_out=final_p*err_induct+final_d*(err_induct-last_err_induct);  
+  172   2        }
+  173   1        else
+  174   1          pos_pid_out=int_p*err_induct+int_d*(err_induct-last_err_induct);
+  175   1      
+  176   1        
+  177   1      
+  178   1      }
+  179          
+  180          void speed_control(uint8 flag)
+  181          {
+  182   1          float set_spd_l=0;
+  183   1          float set_spd_r=0;
+  184   1        //Ö±µÀÍäµÀ²¢ÎÞËùÎ½£¬ÒòÎªÖ±µÀÍäµÀÔÚÎ»ÖÃ»·ÉÏÒÑ¾­×öÁËÇø·Ö
+C251 COMPILER V5.60.0,  pid_contorl                                                        27/12/23  13:07:48  PAGE 4   
+
+  185   1          last_err_spd_r=err_spd_r;
+  186   1          last_err_spd_l=err_spd_l;
+  187   1        
+  188   1          switch(flag)    //Ö±Íä·ÖÀë
+  189   1          {
+  190   2            case 0:   //ÍäµÀ
+  191   2            {
+  192   3              set_spd_r=roll_spd+pos_pid_out;  //ÔÚÉè¶¨ËÙ¶ÈÉÏµÄÆ«²î
+  193   3              set_spd_l=roll_spd-pos_pid_out;    //°´ÕÕ±ÈÀýµÃµ½×ªËÙ½ÏÂýµÄÂÖ×ÓµÄÆÚÍûËÙ¶È
+  194   3              err_spd_l=set_spd_l-spd_l;   //Õý
+  195   3              err_spd_r=set_spd_r-spd_r;   //¸º
+  196   3              break;
+  197   3            }
+  198   2            case 1:  //Ö±µÀ
+  199   2            {
+  200   3            if(factor_flag!=roundabout)
+  201   3            {
+  202   4              set_spd_l=str_spd-pos_pid_out;
+  203   4              set_spd_r=str_spd+pos_pid_out;
+  204   4            }
+  205   3            else   //Ê¹µÃ²»ÊÜÍäµÀËÙ¶ÈÓ°Ïì
+  206   3            {
+  207   4              if(round_state!=out_round)    //³ö»·
+  208   4              {set_spd_l=roud_spd;   //»·ÅÔ±ß¾Í²»ÓÃµç¸ÐÀ´¹æ·¶¹ì¼£ÁË
+  209   5              set_spd_r=roud_spd;}
+  210   4              else
+  211   4              {set_spd_l=str_spd;
+  212   5              set_spd_r=str_spd;
+  213   5              }
+  214   4            
+  215   4            }
+  216   3              err_spd_l=set_spd_l-spd_l;  
+  217   3              err_spd_r=set_spd_r-spd_r;        
+  218   3              break;
+  219   3            }
+  220   2            case 2:       //×ÔÖ÷Èë»·
+  221   2            {
+  222   3            if((int32)ele[ele_count+2]==1)   //×óÈë»·
+  223   3            {
+  224   4              set_spd_l=roud_spd-roud_in_dif;
+  225   4              set_spd_r=roud_spd+roud_in_dif;
+  226   4              err_spd_l=set_spd_l-spd_l;
+  227   4              err_spd_r=set_spd_r-spd_r;
+  228   4            }
+  229   3            else if((int32)ele[ele_count+2]==2)
+  230   3            {
+  231   4              set_spd_l=roud_spd+roud_in_dif;
+  232   4              set_spd_r=roud_spd-roud_in_dif;
+  233   4              err_spd_l=set_spd_l-spd_l;
+  234   4              err_spd_r=set_spd_r-spd_r;
+  235   4            }
+  236   3              break;
+  237   3            }
+  238   2            case 3:    //×ÔÖ÷³ö»·
+  239   2            {
+  240   3              set_spd_l=roud_spd+gyro_out_pos;
+  241   3              set_spd_r=roud_spd-gyro_out_pos;
+  242   3              err_spd_l=set_spd_l-spd_l;
+  243   3              err_spd_r=set_spd_r-spd_r;
+  244   3              break;
+  245   3            }
+  246   2            case 4:   //×ÔÖ÷Ñ­¼£
+  247   2            {
+  248   3            if(pos_pid_out>0)   //×ó×ª
+  249   3            {
+  250   4              set_spd_r=roud_spd+pos_pid_out;  //ÔÚÉè¶¨ËÙ¶ÈÉÏµÄÆ«²î
+C251 COMPILER V5.60.0,  pid_contorl                                                        27/12/23  13:07:48  PAGE 5   
+
+  251   4              set_spd_l=roud_spd-pos_pid_out;    //°´ÕÕ±ÈÀýµÃµ½×ªËÙ½ÏÂýµÄÂÖ×ÓµÄÆÚÍûËÙ¶È
+  252   4              err_spd_l=set_spd_l-spd_l;   //Õý
+  253   4              err_spd_r=set_spd_r-spd_r;   //¸º
+  254   4            }
+  255   3            else //ÓÒ×ª
+  256   3            { 
+  257   4              set_spd_l=roud_spd-pos_pid_out;
+  258   4              set_spd_r=roud_spd+pos_pid_out;
+  259   4              err_spd_l=set_spd_l-spd_l;  
+  260   4              err_spd_r=set_spd_r-spd_r;   
+  261   4            }       
+  262   3              break;
+  263   3            }
+  264   2          }
+  265   1      
+  266   1      }
+  267          
+  268            
+  269            
+  270          void duty_get_close(uint8 flag)
+  271          {
+  272   1        //pd¿ØÖÆÇ°À¡´óÐ¡£¬½çÏÞ²»Ê¹ÓÃµç¸ÐµÄÖ±ÍäÅÐ¶¨£¬Ê¹ÓÃÒ»¸öÐÂµÄÅÐ¶¨·½·¨
+  273   1        //´Ë´¦²»È·¶¨ÊÇ·ñÒªÊ¹ÓÃÁ½Ì×pid£¬¿´¿´Êµ¼ÊÐ§¹û
+  274   1        //²»ÖªµÀÊÇ·ñÒªÔÚÒ»¶¨Îó²îÇø¼äÄÚ²»×öÓ°Ïì
+  275   1        //×óÓÒÂÖÊÇ·ñÒªÉèÖÃÁ½Ì×pid
+  276   1      
+  277   1          if(start_flag==1)
+  278   1        {
+  279   2          last_spd_out_l=duty_left;
+  280   2          last_spd_out_r=duty_right;
+  281   2        }
+  282   1        else
+  283   1        {
+  284   2          last_spd_out_l=0;
+  285   2          last_spd_out_r=0; 
+  286   2        }
+  287   1      
+  288   1        if(flag!=2)
+  289   1        {
+  290   2      
+  291   2            duty_left=spd_ki*(err_spd_l)+spd_kp*(err_spd_l-last_err_spd_l)+last_spd_out_l;
+  292   2            duty_right=spd_ki*(err_spd_r)+spd_kp*(err_spd_r-last_err_spd_r)+last_spd_out_r;     
+  293   2          
+  294   2        }
+  295   1      
+  296   1        else   //»·µºÄÚÅÐ¶¨
+  297   1        {
+  298   2          duty_left=roud_at_p*(err_spd_l-last_err_spd_l)+roud_at_i*(err_spd_l)+last_spd_out_l;
+  299   2          duty_right=roud_at_p*(err_spd_r-last_err_spd_r)+roud_at_i*(err_spd_r)+last_spd_out_r;
+  300   2        }
+  301   1      
+  302   1      
+  303   1        
+  304   1        
+  305   1        //ÍÓÂÝÒÇµÄÊ¹ÓÃ
+  306   1        if(duty_left>9900)
+  307   1          duty_left=9900;
+  308   1        if(duty_right>9900)
+  309   1          duty_right=9900;
+  310   1        if(duty_left<=0)
+  311   1        {
+  312   2          
+  313   2          convert_l=abs(duty_left);
+  314   2          if(convert_l>=9900)
+  315   2          {
+  316   3            convert_l=9900;
+C251 COMPILER V5.60.0,  pid_contorl                                                        27/12/23  13:07:48  PAGE 6   
+
+  317   3            duty_left=-9900;
+  318   3          }
+  319   2        }
+  320   1        else
+  321   1          convert_l=0;
+  322   1        if(duty_right<=0)
+  323   1        {
+  324   2          convert_r=abs(duty_right);
+  325   2          if(convert_r>=9900)
+  326   2          {
+  327   3            convert_r=9900;
+  328   3            duty_right=-9900;
+  329   3          }
+  330   2        }
+  331   1        else 
+  332   1          convert_r=0;
+  333   1      
+  334   1      }
+  335          void gyro_handle(uint8 flag)
+  336          {
+  337   1          //angle errÓÐÎÊÌâ
+  338   1          //Last_Angle_err=Angle_err;  //ÓÉÓÚÖ»ÓÃAngleºÍlast_Angle,²¢ÇÒAngle_err»áÖØÐÂ¸³Öµ£¬ËùÒÔÁ½Õß¼æÈÝ
+  339   1          if(flag==0)
+  340   1          {
+  341   2            Angle_err=Angle-(init_Angle+at_trace_pro*(Finish_Angle-init_Angle));   //ÕýÓÒ¸º×ó,ÒÔ0.5À´Ìá¹©Îó²î
+  342   2          }
+  343   1          else
+  344   1          {
+  345   2            Angle_err=Angle-Finish_Angle;        //³ö»·Ê±ÒªÇóµÄ×ËÌ¬ÊÇ×îºóµÄ½Ç¶È   
+  346   2          }
+  347   1          //ÎªÁË±ÜÃâ¸øÁíÒ»´¦Õý³£Ê¹ÓÃ
+  348   1          
+  349   1      }
+  350          
+  351          void encoder_integral_count(void)
+  352          {
+  353   1        if(round_state==pre_round)
+  354   1        {
+  355   2          if((int32)ele[ele_count+2]==1)
+  356   2          encoder_integral_in+=spd_l;     //Ö±½ÓÍ¨¹ý×ó¼ÆÊýÆ÷¼ÌÐø¼ÆÊý
+  357   2          else
+  358   2          encoder_integral_in+=spd_r;
+  359   2        }
+  360   1        else if(round_state==out_round)
+  361   1        {
+  362   2          if((int32)ele[ele_count+2]==1)
+  363   2          encoder_integral_out+=spd_l;     //Ö±½ÓÍ¨¹ý×ó¼ÆÊýÆ÷¼ÌÐø¼ÆÊý
+  364   2          else
+  365   2          encoder_integral_out+=spd_r;  
+  366   2        }
+  367   1      //  else
+  368   1      //  encoder_integral=0;        //²»ÓÃ¼ÆÊýÊ±¾ÍÇåÁã
+  369   1        else if(round_state==round_done)
+  370   1        {
+  371   2          encoder_integral_in=0;
+  372   2          encoder_integral_out=0;
+  373   2        }
+  374   1        
+  375   1      }
+  376          void duty_get_roundabout(void)
+  377          {
+  378   1        //¿ªÊ¼Ê¹ÓÃÍÓÂÝÒÇÑ­¼£  
+  379   1          switch(round_state)
+  380   1          {
+  381   2            case pre_round:    //Ä¬ÈÏÖ±×ß 
+  382   2            {
+C251 COMPILER V5.60.0,  pid_contorl                                                        27/12/23  13:07:48  PAGE 7   
+
+  383   3              pos_control();
+  384   3              speed_control(1);
+  385   3              
+  386   3              duty_get_close(0);   //ÌáÇ°Ê¹ÓÃ»·ÄÚËÙ¶È»·
+  387   3              
+  388   3              encoder_integral_count();
+  389   3              break;
+  390   3            }
+  391   2            
+  392   2            case dif_in:    //Ê¹ÓÃ×ÔÖ÷²îËÙ
+  393   2            {
+  394   3              gyro_handle(0);   //µÃµ½½Ç¶ÈÎó²î
+  395   3              //pos_control(0);    
+  396   3              speed_control(2);  //ÓÃÀ´µÃµ½ÆÚÍû×ªËÙ
+  397   3              
+  398   3              duty_get_close(0);
+  399   3              break;
+  400   3            }
+  401   2            case auto_trail : //Ê¹ÓÃµç¸ÐÑ­¼£,×¢ÒâÍÓÂÝÒÇ¿ª¹ØÎÊÌâ
+  402   2            {
+  403   3              gyro_handle(1);
+  404   3              pos_control();    //Ê¹ÓÃ»·ÄÚµÄ·½Ïò»·
+  405   3              speed_control(4);    //ËÙ¶È»·pidÐÂ¸øÒ»Ì× Î»ÖÃ»·pid²»¶¯ ËÙ¶È¸ÄÎª»·µºËÙ¶È
+  406   3              duty_get_close(2);   
+  407   3              break;
+  408   3            }
+  409   2            case gyro_stright :   //Ê¹ÓÃÍÓÂÝÒÇÑ­¼£
+  410   2            {
+  411   3              gyro_handle(1);
+  412   3              //pos_control(1);  
+  413   3              gyro_out_pos=(roud_gy_d*(Angle_err-Last_Angle_err)+roud_gy_p*(Angle_err));  //ÓÉÓÚangle_err¹ýÓÚ´ó£¬Ðè
+             -Òª°Ñerr½øÐÐËõÐ¡
+  414   3              speed_control(3); 
+  415   3              duty_get_close(2);  
+  416   3              break;
+  417   3            }
+  418   2            case out_round:  //×ßÒ»¶ÎÖ±µÀ
+  419   2            {
+  420   3              pos_control();
+  421   3              speed_control(1);
+  422   3              duty_get_close(1);
+  423   3              encoder_integral_count();
+  424   3              break;
+  425   3            }
+  426   2            case round_done:     //ÅÐ¶¨Îª³ö»·×´Ì¬
+  427   2            {
+  428   3              round_state=pre_round;
+  429   3              is_roundabout_flag=0;    //ÓÃÀ´×÷ÔÙ´Î³ö»·ÅÐ¶¨
+  430   3              encoder_integral_count();
+  431   3              
+  432   3              if(ele_dir==0)  //ÕýÅÜ
+  433   3          {
+  434   4            if(ele_count==ele_num-1)
+  435   4            ele_count=0;
+  436   4            else
+  437   4            ele_count++;   //µÃµ½µÄÔªËØÍùÉÏÃæµÝÔö
+  438   4      
+  439   4          }
+  440   3          else
+  441   3          {
+  442   4            if(ele_count==0)
+  443   4            ele_count=ele_num-1;
+  444   4            else
+  445   4            ele_count--;
+  446   4          }
+  447   3          
+C251 COMPILER V5.60.0,  pid_contorl                                                        27/12/23  13:07:48  PAGE 8   
+
+  448   3          
+  449   3              break;
+  450   3            }
+  451   2          }
+  452   1        //Ê¹ÓÃ×ÔÖ÷Ñ­¼£
+  453   1      }
+  454          void roudabout_factor_judge(void)
+  455          {
+  456   1        if(encoder_integral_in<integral_in*1000)   //ÕâÑù×ö¿ÉÒÔ½ÚÊ¡Ò»µã¿Õ¼ä£¬²»ÓÃÔÙÉèÒ»¸ö»ý·Ö±äÁ¿
+  457   1        round_state=pre_round;
+  458   1        else if(abs(Angle-init_Angle)<=at_trace_pro*gyro_roll)   //Ê¹ÓÃÍÓÂÝÒÇÑ­¼£
+  459   1        round_state=dif_in;
+  460   1        else if(abs(Angle-init_Angle)<=out_pro*gyro_roll)   //Ê¹ÓÃµç¸ÐÑ­¼£
+  461   1        round_state=auto_trail;
+  462   1        else if(abs(Angle_err)>5)   //Ê¹ÓÃÍÓÂÝÒÇÑ­¼£
+  463   1        round_state=gyro_stright;
+  464   1        else if(encoder_integral_out<integral_out*1000)
+  465   1        round_state=out_round; 
+  466   1        else
+  467   1        round_state=round_done;
+  468   1      
+  469   1      }
+  470          void roudabout_control(void)
+  471          {
+  472   1        
+  473   1        roudabout_factor_judge(); 
+  474   1        duty_get_roundabout();    
+  475   1        //µ±×ÔÖ÷Ñ­¼£½áÊøºóÊ¹ÓÃÍÓÂÝÒÇÀ´Ñ­¼££¬ÍÓÂÝÒÇÑ­¼£½áÊøºóÓÃµç¸ÐÑ­¼££¬Îó²îµÄÖµ¼õÉÙ¿´ÊÇÈëÄÄ¸ö·½ÏòµÄÔ²»·
+  476   1      }
+  477          //roudabout over
+  478          
+  479          void car_run(void)
+  480          { 
+  481   1        switch(factor_flag)
+  482   1        {
+  483   2          case roll:
+  484   2          {
+  485   3            pos_control();   //ÍäµÀ
+  486   3            speed_control(0);
+  487   3            duty_get_close(0);
+  488   3            break;
+  489   3          }
+  490   2          case stright:
+  491   2          {
+  492   3            pos_control();   //¸øÖµÒªÐ¡Ò»µã
+  493   3            speed_control(1);
+  494   3            duty_get_close(1);
+  495   3            break;
+  496   3          } 
+  497   2          case roundabout:
+  498   2          {
+  499   3            roudabout_control();
+  500   3            break;
+  501   3          }
+  502   2          case cross:
+  503   2          {
+  504   3            err_induct=((god_Sqrt(induct2_filter)-god_Sqrt(induct3_filter))*1000)/(induct2_filter+induct3_filter);
+             - //Ê®×ÖÓÃÖÐ¼äÁ½¸öµç¸ÐÑ­¼£
+  505   3            pos_control();   //ÍäµÀ
+  506   3            speed_control(1); //Ö±µÀËÙ¶È
+  507   3            duty_get_close(0);  
+  508   3            break;
+  509   3          }
+  510   2        }
+  511   1      }
+  512          void gyro_get(void)
+C251 COMPILER V5.60.0,  pid_contorl                                                        27/12/23  13:07:48  PAGE 9   
+
+  513          {
+  514   1            gyro_acc_filter();
+  515   1            Last_Angle=Angle;
+  516   1            Last_Angle_err=Angle_err;  //ÓÉÓÚÖ»ÓÃAngleºÍlast_Angle,²¢ÇÒAngle_err»áÖØÐÂ¸³Öµ£¬ËùÒÔÁ½Õß¼æÈÝ
+  517   1      //      Angle=AngleGet();
+  518   1            Angle=Angel_Get_Kal();
+  519   1      }
+  520          
+  521          void protection(void)
+  522          {
+  523   1        int32 stop_err=50;
+  524   1        if(stop_err>induct1_filter)  //ÎªÁËÏû³ý¾¯¸æËõ¶ÌÌõ¼þ
+  525   1        {
+  526   2          if(stop_err>induct4_filter)
+  527   2          {
+  528   3            start_flag=0;
+  529   3            clear_flag=1;
+  530   3          }
+  531   2          }
+  532   1      }
+  533              
+  534          
+  535          
+  536          
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =      3023     ------
+  ecode size           =    ------     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =    ------     ------
+  xdata-const size     =    ------     ------
+  edata size           =       128     ------
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =       170     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,196 @@
+C251 COMPILER V5.60.0,  gyro                                                               27/12/23  12:51:18  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE gyro
+OBJECT MODULE PLACED IN .\Out_File\gyro.obj
+COMPILER INVOKED BY: C:\keil MCK\C251\BIN\C251.EXE gyro.c XSMALL INTR2 WARNINGLEVEL(3) OPTIMIZE(0,SPEED) BROWSE INCDIR(.
+                    -.\..\Libraries\libraries;..\..\Libraries\seekfree_libraries;..\..\Libraries\seekfree_peripheral;..\CODE;..\USER\inc;..\U
+                    -SER\src) DEBUG PRINT(.\Out_File\gyro.lst) TABS(2) OBJECT(.\Out_File\gyro.obj) 
+
+stmt  level    source
+
+    1          #include "gyro.h"
+    2          #include "SEEKFREE_IMU963RA.h"
+    3          #include "flash.h"
+    4          #include "math.h"
+    5          #include "SEEKFREE_OLED.h"
+    6          
+    7          //int16 gy_zero;
+    8          //int16 gx_zero;
+    9          float Angle_gyro=0;
+   10          float gz_zero=0;
+   11          float gx_acc;
+   12          float gy_acc;
+   13          float gz_acc;
+   14          float gz;
+   15          float gz_total;
+   16          float gz_filter;
+   17          float gz_acc_filter;
+   18          float gy_acc_filter;
+   19          float gx_acc_filter;
+   20          
+   21          
+   22          
+   23          
+   24          //在发车之前把偏差值算出消除掉
+   25          
+   26          void the_KalmanFilter(float input)
+   27          {
+   28   1          
+   29   1          
+   30   1          //预测协方差方程：k时刻系统估算协方差 = k-1时刻的系统协方差 + 过程噪声协方差
+   31   1          Klm.Now_P = Klm.LastP + Klm.Q;
+   32   1          //卡尔曼增益方程：卡尔曼增益 = k时刻系统估算协方差 / （k时刻系统估算协方差 + 观测噪声协方差）
+   33   1          Klm.Kg = Klm.Now_P / (Klm.Now_P + Klm.R);
+   34   1          //更新最优值方程：k时刻状态变量的最优值 = 状态变量的预测值 + 卡尔曼增益 * （测量值 - 状态变量的预测值
+             -）
+   35   1          Klm.out = Klm.out + Klm.Kg * (input -Klm.out)+Klm.B;//因为这一次的预测值就是上一次的输出值
+   36   1          //更新协方差方程: 本次的系统协方差赋给 klm->LastP 为下一次运算准备。
+   37   1          Klm.LastP = (1-Klm.Kg) * Klm.Now_P; 
+   38   1      }
+   39          void Kalman_Init(void)//温度klm_Q=0.01 klm_R=0.25
+   40          {
+   41   1        Klm.Now_P=0;      //当前估算协方差
+   42   1        Klm.out=0;        //卡尔曼滤波器输出
+   43   1        Klm.Kg=0;       //卡尔曼增益
+   44   1        Klm.LastP=0;
+   45   1        //0.85 0.01
+   46   1      }
+   47          void get_gyro_err(void)  //按一个键得到初始err
+   48          {
+   49   1        uint8 i;
+   50   1        float gz_zero_total=0;
+   51   1        for(i=0;i<50;i++)
+   52   1        {
+   53   2          imu963ra_get_gyro();
+   54   2          gz_zero_total+=imu963ra_gyro_transition(imu963ra_gyro_z);
+   55   2        }   //得到值
+   56   1        //gy_zero=icm20602_gyro_y;
+C251 COMPILER V5.60.0,  gyro                                                               27/12/23  12:51:18  PAGE 2   
+
+   57   1        //gx_zero=icm20602_gyro_x;
+   58   1        gz_zero=gz_zero_total/50;    // 得到度/s  
+   59   1      
+   60   1        
+   61   1      }
+   62          
+   63          
+   64          
+   65          
+   66          void gyro_get_roll(void)
+   67          {
+   68   1      //  for(i=10-roll_bits_gyro;i>=1;i--)
+   69   1      //  {
+   70   1      //    gz[i-1]=gz[i];
+   71   1      //    //gz_acc[i-1]=gz_acc[i];
+   72   1      //    gy_acc[i-1]=gy_acc[i];
+   73   1      //    gx_acc[i-1]=gx_acc[i];
+   74   1      //  }
+   75   1          imu963ra_get_gyro();
+   76   1          imu963ra_get_acc();
+   77   1          gz=imu963ra_gyro_transition(imu963ra_gyro_z)-gz_zero;    //减去初始临界值
+   78   1          //gx_acc=imu963ra_acc_transition(imu963ra_acc_x);   //单位为加速度单位
+   79   1      //    gy_acc=imu963ra_acc_transition(imu963ra_acc_y);
+   80   1      //    gz_acc=imu963ra_acc_transition(imu963ra_gyro_z);    
+   81   1      }
+   82          void gyro_filter_roll_mid(void)
+   83          {
+   84   1        gz_filter=gz;   //转换为角度
+   85   1        //gx_acc_filter=gx_acc;
+   86   1        gy_acc_filter=gy_acc;
+   87   1        gz_acc_filter=gz_acc;
+   88   1      //    imu660ra_get_gyro();
+   89   1      //    imu660ra_get_acc();
+   90   1      //    gz_filter=imu660ra_gyro_transition(imu660ra_gyro_z)-gz_zero;    //减去初始临界值
+   91   1      //    gx_acc_filter=imu660ra_acc_transition(imu660ra_acc_x);   //单位为加速度单位
+   92   1      //    gy_acc_filter=imu660ra_acc_transition(imu660ra_acc_y);
+   93   1      }
+   94          void gyro_acc_filter(void)
+   95          {
+   96   1        gyro_get_roll();
+   97   1        //max_min_gyro_acc_init();
+   98   1        //find_the_trash_gyro();
+   99   1        gyro_filter_roll_mid();
+  100   1      }
+  101          /***互补滤波角度计算***/
+  102          float AngleGet(void)
+  103          {
+  104   1              //float dt = 0.0001249;//Gy 2ms时间积分系数
+  105   1        float dt=0.005;
+  106   1        float Angle;      
+  107   1        float Angle_acc=0;
+  108   1        double angle_ratio;//加速度比值
+  109   1               /***以下为加速度计取反正切得到角度***/
+  110   1              
+  111   1        
+  112   1              
+  113   1        
+  114   1              angle_ratio=((double)gy_acc_filter)/(gz_acc_filter+0.1);    //每个陀螺仪放置的位置不同，需要确定
+  115   1           
+  116   1              Angle_acc=(float)atan(angle_ratio)*57.29578049;//加速度计得到的角
+  117   1      
+  118   1        
+  119   1        
+  120   1              if(Angle_acc > 89)
+  121   1                Angle_acc = 89;
+  122   1              if(Angle_acc < -89)
+C251 COMPILER V5.60.0,  gyro                                                               27/12/23  12:51:18  PAGE 3   
+
+  123   1                Angle_acc = -89;   //左减右正      
+  124   1              Angle_gyro+=gz_filter * dt;   //左正右减
+  125   1              Angle=Angle_gyro+(Angle_acc-Angle_gyro)*0.01;
+  126   1              //oled_gyro_test(Angle_acc,Angle);    //测验
+  127   1              //oled_printf_float(60,6,Angle_acc,3,3);
+  128   1              return Angle;
+  129   1          //相当于Angle = Angle*(1-0.00105) + Angle_acc*0.001
+  130   1      }
+  131          float Angel_Get_Kal(void)
+  132          {
+  133   1        float dt=0.005;
+  134   1        the_KalmanFilter(gz_filter);
+  135   1        Angle_gyro+=Klm.out*dt;
+  136   1        return Angle_gyro;
+  137   1      }
+  138          void oled_gyro_test(float Angle_acc,float Angle)
+  139          {
+  140   1        oled_p6x8str(0,0,"Angel_gyro:");
+  141   1        oled_p6x8str(0,1,"Angel_acc:");
+  142   1        oled_p6x8str(0,2,"Angel:");
+  143   1      //  oled_printf_float(64,0,Angle_gyro,3,1);  //得到角度
+  144   1      //  oled_printf_float(64,1,Angle_acc,3,1);
+  145   1      //  oled_printf_float(64,2,Angle,3,1);
+  146   1        oled_printf_float(64,0,Angle_gyro,4,4);  //得到角度
+  147   1        oled_printf_float(64,1,Angle_acc,4,4);
+  148   1        oled_printf_float(64,2,Angle,4,4);
+  149   1        
+  150   1      }
+  151          
+  152          
+  153          //在连续弯道，会一直处于弯道识别嘛
+  154          //来回震荡时使用陀螺仪作用
+  155          
+  156          
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =       605     ------
+  ecode size           =    ------     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =    ------     ------
+  xdata-const size     =    ------     ------
+  edata size           =        81     ------
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =        46     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

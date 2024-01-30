@@ -1,0 +1,1 @@
+"kalman_struct.c" XSMALL INTR2 WARNINGLEVEL (3) OPTIMIZE (0,SPEED) BROWSE INCDIR(..\..\Libraries\libraries;..\..\Libraries\seekfree_libraries;..\..\Libraries\seekfree_peripheral;..\CODE;..\USER\inc;..\USER\src) DEBUG PRINT(.\Out_File\kalman_struct.lst) TABS (2) OBJECT(.\Out_File\kalman_struct.obj)

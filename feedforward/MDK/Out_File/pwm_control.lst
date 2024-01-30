@@ -1,0 +1,106 @@
+C251 COMPILER V5.60.0,  pwm_control                                                        27/12/23  12:51:18  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE pwm_control
+OBJECT MODULE PLACED IN .\Out_File\pwm_control.obj
+COMPILER INVOKED BY: C:\keil MCK\C251\BIN\C251.EXE pwm_control.c XSMALL INTR2 WARNINGLEVEL(3) OPTIMIZE(0,SPEED) BROWSE I
+                    -NCDIR(..\..\Libraries\libraries;..\..\Libraries\seekfree_libraries;..\..\Libraries\seekfree_peripheral;..\CODE;..\USER\i
+                    -nc;..\USER\src) DEBUG PRINT(.\Out_File\pwm_control.lst) TABS(2) OBJECT(.\Out_File\pwm_control.obj) 
+
+stmt  level    source
+
+    1          #include "pwm_control.h"
+    2          #include "zf_pwm.h"
+    3          #include "pid_control.h"
+    4          #include "oled_menu.h"
+    5          #include "flash.h"
+    6          
+    7          
+    8          
+    9          
+   10          #define PWM_LEFT  (PWMA_CH1N_P11)
+   11          #define PWM_LEFT_CONVERT (PWMA_CH2N_P13)
+   12          #define PWM_RIGHT  (PWMA_CH3N_P65)
+   13          #define PWM_RIGHT_CONVERT (PWMA_CH4N_P67)   //lianggebo
+   14          
+   15          //旧车
+   16          //#define PWM_LEFT  (PWMA_CH3N_P65)
+   17          //#define PWM_LEFT_CONVERT (PWMA_CH4N_P67)
+   18          //#define PWM_RIGHT  (PWMA_CH1N_P11)
+   19          //#define PWM_RIGHT_CONVERT (PWMA_CH2N_P13)   //lianggebo
+   20          
+   21          void my_pwm_init(void)
+   22          {
+   23   1        pwm_init(PWM_LEFT,17000, 0);
+   24   1        pwm_init(PWM_RIGHT,17000,0);
+   25   1        pwm_init(PWM_LEFT_CONVERT,17000,0);
+   26   1        pwm_init(PWM_RIGHT_CONVERT,17000,0);
+   27   1      }
+   28          void pwm_control(void)
+   29          {
+   30   1        if(start_flag==1)
+   31   1        {
+   32   2          if(duty_left<=0&&duty_right>0)
+   33   2        {
+   34   3          pwm_duty(PWM_LEFT,0);
+   35   3          pwm_duty(PWM_RIGHT,(uint32)duty_right);
+   36   3          pwm_duty(PWM_LEFT_CONVERT,(uint32)convert_l);
+   37   3          pwm_duty(PWM_RIGHT_CONVERT,0);
+   38   3        }
+   39   2        else if(duty_right<=0&&duty_left>0)
+   40   2        {
+   41   3          pwm_duty(PWM_LEFT,(uint32)duty_left);
+   42   3          pwm_duty(PWM_RIGHT,0);
+   43   3          pwm_duty(PWM_LEFT_CONVERT,0);
+   44   3          pwm_duty(PWM_RIGHT_CONVERT,(uint32)convert_r);
+   45   3        }
+   46   2        else if(duty_right<=0&&duty_left<=0)
+   47   2        {
+   48   3          pwm_duty(PWM_LEFT,0);
+   49   3          pwm_duty(PWM_RIGHT,0);
+   50   3          pwm_duty(PWM_LEFT_CONVERT,(uint32)convert_l);
+   51   3          pwm_duty(PWM_RIGHT_CONVERT,(uint32)convert_r);  
+   52   3        
+   53   3        }
+   54   2        else
+   55   2        {
+   56   3          pwm_duty(PWM_LEFT,(uint32)duty_left);
+   57   3          pwm_duty(PWM_RIGHT,(uint32)duty_right);
+C251 COMPILER V5.60.0,  pwm_control                                                        27/12/23  12:51:18  PAGE 2   
+
+   58   3          pwm_duty(PWM_LEFT_CONVERT,0);
+   59   3          pwm_duty(PWM_RIGHT_CONVERT,0);
+   60   3        }
+   61   2        }
+   62   1        else   //触发保护
+   63   1        {
+   64   2          pwm_duty(PWM_LEFT,0);  //yz
+   65   2          pwm_duty(PWM_RIGHT,0);    //zz
+   66   2          pwm_duty(PWM_LEFT_CONVERT,0); //yf
+   67   2          pwm_duty(PWM_RIGHT_CONVERT,0);    
+   68   2        }
+   69   1      }
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =       390     ------
+  ecode size           =    ------     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =    ------     ------
+  xdata-const size     =    ------     ------
+  edata size           =         4     ------
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =    ------     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

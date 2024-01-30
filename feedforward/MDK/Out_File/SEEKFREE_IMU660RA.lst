@@ -1,0 +1,794 @@
+C251 COMPILER V5.60.0,  SEEKFREE_IMU660RA                                                  04/12/23  16:30:44  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE SEEKFREE_IMU660RA
+OBJECT MODULE PLACED IN .\Out_File\SEEKFREE_IMU660RA.obj
+COMPILER INVOKED BY: C:\keil MCK\C251\BIN\C251.EXE ..\..\..\STC32G12K128_Library-master\Example\Libraries\seekfree_perip
+                    -heral\SEEKFREE_IMU660RA.c XSMALL INTR2 WARNINGLEVEL(3) OPTIMIZE(0,SPEED) BROWSE INCDIR(..\..\Libraries\libraries;..\..\L
+                    -ibraries\seekfree_libraries;..\..\Libraries\seekfree_peripheral;..\CODE;..\USER\inc;..\USER\src) DEBUG PRINT(.\Out_File\
+                    -SEEKFREE_IMU660RA.lst) TABS(2) OBJECT(.\Out_File\SEEKFREE_IMU660RA.obj) 
+
+stmt  level    source
+
+    1          /********************************************************************************************************
+             -*************
+    2           * COPYRIGHT NOTICE
+    3           * Copyright (c) 2018,逐飞科技
+    4           * All rights reserved.
+    5           * 技术讨论QQ群：一群：179029047(已满)  二群：244861897
+    6           *
+    7           * 以下所有内容版权均属逐飞科技所有，未经允许不得用于商业用途，
+    8           * 欢迎各位使用并传播本程序，修改内容时必须保留逐飞科技的版权声明。
+    9           *
+   10           * @file          IMU660RA
+   11           * @company       成都逐飞科技有限公司
+   12           * @author        逐飞科技(QQ3184284598)
+   13           * @version       查看doc内version文件 版本说明
+   14           * @Software    MDK FOR C251 V5.60
+   15           * @Target core   STC32G12K128
+   16           * @Taobao      https://seekfree.taobao.com/
+   17           * @date          2019-04-30
+   18           * @note    
+   19           * 接线定义：
+   20           *                   ------------------------------------
+   21           *                   模块管脚            单片机管脚
+   22           *                   // 硬件 SPI 引脚
+   23           *                   SCL/SPC           查看 SEEKFREE_IMU660RA.h 中 IMU660RA_SPC_PIN 宏定义
+   24           *                   SDA/DSI           查看 SEEKFREE_IMU660RA.h 中 IMU660RA_SDI_PIN 宏定义
+   25           *                   SA0/SDO           查看 SEEKFREE_IMU660RA.h 中 IMU660RA_SDO_PIN 宏定义
+   26           *                   CS                查看 SEEKFREE_IMU660RA.h 中 IMU660RA_CS_PIN 宏定义
+   27           *                   VCC               3.3V电源
+   28           *                   GND               电源地
+   29           *                   其余引脚悬空
+   30           *
+   31           *                   // 软件 IIC 引脚
+   32           *                   SCL/SPC           查看 SEEKFREE_IMU660RA.h 中 IMU660RA_SCL_PIN 宏定义
+   33           *                   SDA/DSI           查看 SEEKFREE_IMU660RA.h 中 IMU660RA_SDA_PIN 宏定义
+   34           *                   VCC               3.3V电源
+   35           *                   GND               电源地
+   36           *                   其余引脚悬空
+   37           *                   ------------------------------------
+   38          *********************************************************************************************************
+             -***********/
+   39          
+   40          #include "SEEKFREE_IMU660RA.h"
+   41          
+   42          #include "SEEKFREE_CONFIG.h"
+   43          
+   44          #include "zf_delay.h"
+   45          #include "zf_spi.h"
+   46          
+   47          
+   48          #pragma warning disable = 177
+   49          #pragma warning disable = 183
+   50          
+   51          
+   52          int16 imu660ra_gyro_x = 0, imu660ra_gyro_y = 0, imu660ra_gyro_z = 0;            // 三轴陀螺仪数据 
+             -  gyro (陀螺仪)
+   53          int16 imu660ra_acc_x = 0, imu660ra_acc_y = 0, imu660ra_acc_z = 0;               // 三轴加速度计数�
+C251 COMPILER V5.60.0,  SEEKFREE_IMU660RA                                                  04/12/23  16:30:44  PAGE 2   
+
+             -�� acc  (accelerometer 加速度计)
+   54          
+   55          #if IMU660RA_USE_SOFT_IIC
+   56          
+   57          #define GET_IMU660RA_SDA          IMU660RA_SDA_PIN
+   58          #define IMU660RA_SCL_LOW()            IMU660RA_SCL_PIN = 0    //IO口输出低电平
+   59          #define IMU660RA_SCL_HIGH()           IMU660RA_SCL_PIN = 1    //IO口输出高电平
+   60          #define IMU660RA_SDA_LOW()            IMU660RA_SDA_PIN = 0    //IO口输出低电平
+   61          #define IMU660RA_SDA_HIGH()           IMU660RA_SDA_PIN = 1    //IO口输出高电平
+   62          
+   63          
+   64          #define ack 1      //主应答
+   65          #define no_ack 0   //从应答  
+   66          
+   67          //-------------------------------------------------------------------------------------------------------
+             -------------
+   68          //  @brief      模拟IIC延时
+   69          //  @return     void            
+   70          //  @since      v1.0
+   71          //  Sample usage:       如果IIC通讯失败可以尝试增加j的值
+   72          //-------------------------------------------------------------------------------------------------------
+             -------------
+   73          static void imu660ra_simiic_delay(void)
+   74          {
+   75   1          uint16 j=IMU660RA_SOFT_IIC_DELAY;   
+   76   1        while(j--);
+   77   1      }
+   78          
+   79          //内部使用，用户无需调用
+   80          static void imu660ra_simiic_start(void)
+   81          {
+   82   1        IMU660RA_SDA_HIGH();
+   83   1        IMU660RA_SCL_HIGH();
+   84   1        imu660ra_simiic_delay();
+   85   1        IMU660RA_SDA_LOW();
+   86   1        imu660ra_simiic_delay();
+   87   1        IMU660RA_SCL_LOW();
+   88   1      }
+   89          
+   90          //内部使用，用户无需调用
+   91          static void imu660ra_simiic_stop(void)
+   92          {
+   93   1        IMU660RA_SDA_LOW();
+   94   1        IMU660RA_SCL_LOW();
+   95   1        imu660ra_simiic_delay();
+   96   1        IMU660RA_SCL_HIGH();
+   97   1        imu660ra_simiic_delay();
+   98   1        IMU660RA_SDA_HIGH();
+   99   1        imu660ra_simiic_delay();
+  100   1      }
+  101          
+  102          //主应答(包含ack:SDA=0和no_ack:SDA=0)
+  103          //内部使用，用户无需调用
+  104          static void imu660ra_simiic_sendack(unsigned char ack_dat)
+  105          {
+  106   1          IMU660RA_SCL_LOW();
+  107   1        imu660ra_simiic_delay();
+  108   1        if(ack_dat) IMU660RA_SDA_LOW();
+  109   1          else      IMU660RA_SDA_HIGH();
+  110   1      
+  111   1          IMU660RA_SCL_HIGH();
+  112   1          imu660ra_simiic_delay();
+  113   1          IMU660RA_SCL_LOW();
+  114   1          imu660ra_simiic_delay();
+  115   1      }
+  116          
+C251 COMPILER V5.60.0,  SEEKFREE_IMU660RA                                                  04/12/23  16:30:44  PAGE 3   
+
+  117          
+  118          static int imu660ra_sccb_waitack(void)
+  119          {
+  120   1          IMU660RA_SCL_LOW();
+  121   1      
+  122   1        imu660ra_simiic_delay();
+  123   1        
+  124   1        IMU660RA_SCL_HIGH();
+  125   1          imu660ra_simiic_delay();
+  126   1        
+  127   1          if(GET_IMU660RA_SDA)           //应答为高电平，异常，通信失败
+  128   1          {
+  129   2      
+  130   2              IMU660RA_SCL_LOW();
+  131   2              return 0;
+  132   2          }
+  133   1      
+  134   1          IMU660RA_SCL_LOW();
+  135   1        imu660ra_simiic_delay();
+  136   1          return 1;
+  137   1      }
+  138          
+  139          //字节发送程序
+  140          //发送c(可以是数据也可是地址)，送完后接收从应答
+  141          //不考虑从应答位
+  142          //内部使用，用户无需调用
+  143          static void imu660ra_send_ch(uint8 c)
+  144          {
+  145   1        uint8 i = 8;
+  146   1          while(i--)
+  147   1          {
+  148   2              if(c & 0x80)  IMU660RA_SDA_HIGH();//SDA 输出数据
+  149   2              else      IMU660RA_SDA_LOW();
+  150   2              c <<= 1;
+  151   2              imu660ra_simiic_delay();
+  152   2              IMU660RA_SCL_HIGH();                //SCL 拉高，采集信号
+  153   2              imu660ra_simiic_delay();
+  154   2              IMU660RA_SCL_LOW();                //SCL 时钟线拉低
+  155   2          }
+  156   1        imu660ra_sccb_waitack();
+  157   1      }
+  158          
+  159          
+  160          //字节接收程序
+  161          //接收器件传来的数据，此程序应配合|主应答函数|使用
+  162          //内部使用，用户无需调用
+  163          static uint8 imu660ra_read_ch(uint8 ack_x)
+  164          {
+  165   1          uint8 i;
+  166   1          uint8 c;
+  167   1          c=0;
+  168   1          IMU660RA_SCL_LOW();
+  169   1          imu660ra_simiic_delay();
+  170   1          IMU660RA_SDA_HIGH();             
+  171   1      
+  172   1          for(i=0;i<8;i++)
+  173   1          {
+  174   2              imu660ra_simiic_delay();
+  175   2              IMU660RA_SCL_LOW();         //置时钟线为低，准备接收数据位
+  176   2              imu660ra_simiic_delay();
+  177   2              IMU660RA_SCL_HIGH();         //置时钟线为高，使数据线上数据有效
+  178   2              imu660ra_simiic_delay();
+  179   2              c<<=1;
+  180   2              if(GET_IMU660RA_SDA) 
+  181   2              {
+  182   3                  c+=1;   //读数据位，将接收的数据存c
+C251 COMPILER V5.60.0,  SEEKFREE_IMU660RA                                                  04/12/23  16:30:44  PAGE 4   
+
+  183   3              }
+  184   2          }
+  185   1      
+  186   1        IMU660RA_SCL_LOW();
+  187   1        imu660ra_simiic_delay();
+  188   1        imu660ra_simiic_sendack(ack_x);
+  189   1        
+  190   1          return c;
+  191   1      }
+  192          
+  193          
+  194          //-------------------------------------------------------------------------------------------------------
+             -------------
+  195          //  @brief      模拟IIC写数据到设备寄存器函数
+  196          //  @param      dev_add     设备地址(低七位地址)
+  197          //  @param      reg       寄存器地址
+  198          //  @param      dat       写入的数据
+  199          //  @return     void            
+  200          //  @since      v1.0
+  201          //  Sample usage:       
+  202          //-------------------------------------------------------------------------------------------------------
+             -------------
+  203          static void imu660ra_simiic_write_reg(uint8 dev_add, uint8 reg, uint8 dat)
+  204          {
+  205   1        imu660ra_simiic_start();
+  206   1          imu660ra_send_ch( (dev_add<<1) | 0x00);   //发送器件地址加写位
+  207   1        imu660ra_send_ch( reg );           //发送从机寄存器地址
+  208   1        imu660ra_send_ch( dat );           //发送需要写入的数据
+  209   1        imu660ra_simiic_stop();
+  210   1      }
+  211          
+  212          //-------------------------------------------------------------------------------------------------------
+             -------------
+  213          //  @brief      模拟IIC写数据到设备寄存器函数
+  214          //  @param      dev_add     设备地址(低七位地址)
+  215          //  @param      reg       寄存器地址
+  216          //  @param      dat       写入的数据
+  217          //  @return     void            
+  218          //  @since      v1.0
+  219          //  Sample usage:       
+  220          //-------------------------------------------------------------------------------------------------------
+             -------------
+  221          static void imu660ra_simiic_write_regs(uint8 dev_add, uint8 reg, uint8 *dat, uint32 len)
+  222          {
+  223   1        uint16 i = 0;
+  224   1        imu660ra_simiic_start();
+  225   1          imu660ra_send_ch( (dev_add<<1) | 0x00);   //发送器件地址加写位
+  226   1        imu660ra_send_ch( reg );           //发送从机寄存器地址
+  227   1      
+  228   1        while(len--)
+  229   1        {
+  230   2          imu660ra_send_ch( *dat++ );            //发送需要写入的数据
+  231   2        }
+  232   1      
+  233   1        
+  234   1        imu660ra_simiic_stop();
+  235   1      }
+  236          //-------------------------------------------------------------------------------------------------------
+             -------------
+  237          //  @brief      模拟IIC从设备寄存器读取数据
+  238          //  @param      dev_add     设备地址(低七位地址)
+  239          //  @param      reg       寄存器地址
+  240          //  @param      type      选择通信方式是IIC  还是 SCCB
+  241          //  @return     uint8     返回寄存器的数据      
+  242          //  @since      v1.0
+  243          //  Sample usage:       
+C251 COMPILER V5.60.0,  SEEKFREE_IMU660RA                                                  04/12/23  16:30:44  PAGE 5   
+
+  244          //-------------------------------------------------------------------------------------------------------
+             -------------
+  245          static uint8 imu660ra_simiic_read_reg(uint8 dev_add, uint8 reg)
+  246          {
+  247   1        uint8 dat;
+  248   1        imu660ra_simiic_start();
+  249   1          imu660ra_send_ch( (dev_add<<1) | 0x00);  //发送器件地址加写位
+  250   1        imu660ra_send_ch( reg );          //发送从机寄存器地址
+  251   1        
+  252   1        imu660ra_simiic_start();
+  253   1        imu660ra_send_ch( (dev_add<<1) | 0x01);  //发送器件地址加读位
+  254   1        dat = imu660ra_read_ch(no_ack);           //读取数据
+  255   1        imu660ra_simiic_stop();
+  256   1        
+  257   1        return dat;
+  258   1      }
+  259          
+  260          //-------------------------------------------------------------------------------------------------------
+             -------------
+  261          //  @brief      模拟IIC读取多字节数据
+  262          //  @param      dev_add     设备地址(低七位地址)
+  263          //  @param      reg       寄存器地址
+  264          //  @param      dat_add     数据保存的地址指针
+  265          //  @param      num       读取字节数量
+  266          //  @param      type      选择通信方式是IIC  还是 SCCB
+  267          //  @return     uint8     返回寄存器的数据      
+  268          //  @since      v1.0
+  269          //  Sample usage:       
+  270          //-------------------------------------------------------------------------------------------------------
+             -------------
+  271          static void imu660ra_simiic_read_regs(uint8 dev_add, uint8 reg, uint8 *dat_add, uint32 num)
+  272          {
+  273   1        imu660ra_simiic_start();
+  274   1          imu660ra_send_ch( (dev_add<<1) | 0x00);  //发送器件地址加写位
+  275   1        imu660ra_send_ch( reg );          //发送从机寄存器地址
+  276   1        
+  277   1        imu660ra_simiic_start();
+  278   1        imu660ra_send_ch( (dev_add<<1) | 0x01);  //发送器件地址加读位
+  279   1          while(--num)
+  280   1          {
+  281   2              *dat_add = imu660ra_read_ch(ack); //读取数据
+  282   2              dat_add++;
+  283   2          }
+  284   1          *dat_add = imu660ra_read_ch(no_ack); //读取数据
+  285   1        imu660ra_simiic_stop();
+  286   1      }
+  287          
+  288          #define imu660ra_write_register(reg, dat)        (imu660ra_simiic_write_reg(IMU660RA_DEV_ADDR, (reg), (da
+             -t)))
+  289          #define imu660ra_write_registers(reg, dat, len)  (imu660ra_simiic_write_regs(IMU660RA_DEV_ADDR, (reg), (d
+             -at), (len)))
+  290          #define imu660ra_read_register(reg)              (imu660ra_simiic_read_reg(IMU660RA_DEV_ADDR, (reg)))
+  291          #define imu660ra_read_registers(reg, dat, len)   (imu660ra_simiic_read_regs(IMU660RA_DEV_ADDR, (reg), (da
+             -t), (len)))
+  292          
+  293          #else
+               
+               
+               #define IMU660RA_SCK(x)       IMU660RA_SPC_PIN  = x
+               #define IMU660RA_MOSI(x)      IMU660RA_SDI_PIN = x
+               #define IMU660RA_CS(x)        IMU660RA_CS_PIN  = x
+               #define IMU660RA_MISO         IMU660RA_SDO_PIN 
+               
+               
+               //-------------------------------------------------------------------------------------------------------
+             -------------
+C251 COMPILER V5.60.0,  SEEKFREE_IMU660RA                                                  04/12/23  16:30:44  PAGE 6   
+
+               //  @brief      通过SPI写一个byte,同时读取一个byte
+               //  @param      byte        发送的数据    
+               //  @return     uint8       return 返回status状态
+               //  @since      v1.0
+               //  Sample usage:
+               //-------------------------------------------------------------------------------------------------------
+             -------------
+               static uint8 imu660ra_simspi_wr_byte(uint8 byte)
+               {
+                   uint8 i;
+                 
+                   for(i=0; i<8; i++)
+                   {
+                       IMU660RA_MOSI(byte&0x80);
+                       byte <<= 1;
+                   IMU660RA_SCK (0);
+                   IMU660RA_SCK (0);
+                   IMU660RA_SCK (1);
+                   IMU660RA_SCK (1);
+                   
+                   byte |= IMU660RA_MISO; 
+                   } 
+                   return(byte);                                         
+               }
+               //-------------------------------------------------------------------------------------------------------
+             -------------
+               //  @brief      将val写入cmd对应的寄存器地址,同时返回status字节
+               //  @param      cmd         命令字
+               //  @param      val         待写入寄存器的数值
+               //  @since      v1.0
+               //  Sample usage:
+               //-------------------------------------------------------------------------------------------------------
+             -------------
+               static void imu660ra_simspi_w_reg_byte(uint8 cmd, uint8 val)
+               {
+                   cmd |= IMU660RA_SPI_W;
+                   imu660ra_simspi_wr_byte(cmd);                       
+                   imu660ra_simspi_wr_byte(val);                                                                   
+               }
+               
+               
+               //-------------------------------------------------------------------------------------------------------
+             -------------
+               //  @brief      将val写入cmd对应的寄存器地址
+               //  @param      cmd         命令字
+               //  @param      val         待写入寄存器的数值
+               //  @since      v1.0
+               //  Sample usage:
+               //-------------------------------------------------------------------------------------------------------
+             -------------
+               static void imu660ra_simspi_w_reg_bytes(uint8 cmd, uint8 *dat_addr, uint32 len)
+               {
+                   cmd |= IMU660RA_SPI_W;
+                   imu660ra_simspi_wr_byte(cmd);   
+                 while(len--)
+                 {
+                   imu660ra_simspi_wr_byte(*dat_addr++);   
+                 }                                                                 
+               }
+               
+               //-------------------------------------------------------------------------------------------------------
+             -------------
+               //  @brief      读取cmd所对应的寄存器地址
+               //  @param      cmd         命令字
+               //  @param      *val        存储读取的数据地址
+               //  @since      v1.0
+C251 COMPILER V5.60.0,  SEEKFREE_IMU660RA                                                  04/12/23  16:30:44  PAGE 7   
+
+               //  Sample usage:
+               //-------------------------------------------------------------------------------------------------------
+             -------------
+               //static void imu660ra_simspi_r_reg_byte(uint8 cmd, uint8 *val)
+               //{
+               //    IMU660RA_CS(0);
+               //    cmd |= IMU660RA_SPI_R;
+               //    imu660ra_simspi_wr_byte(cmd);                                 
+               //    *val = imu660ra_simspi_wr_byte(0);                            
+               //    IMU660RA_CS(1);                                     
+               //}
+               
+               //-------------------------------------------------------------------------------------------------------
+             -------------
+               //  @brief      读取cmd所对应的寄存器地址
+               //  @param      cmd         命令字
+               //  @param      *val        存储读取的数据地址
+               //  @param      num         读取的数量
+               //  @since      v1.0
+               //  Sample usage:
+               //-------------------------------------------------------------------------------------------------------
+             -------------
+               static void imu660ra_simspi_r_reg_bytes(uint8 cmd, uint8 *val, uint32 num)
+               {
+                   cmd |= IMU660RA_SPI_R;
+                   imu660ra_simspi_wr_byte(cmd);
+                 
+                 while(num--)
+                 {
+                   *val++ = imu660ra_simspi_wr_byte(0);
+                 }
+               }
+               
+               
+               //-------------------------------------------------------------------------------------------------------
+             -------------
+               // 函数简介     IMU660RA 写寄存器
+               // 参数说明     reg             寄存器地址
+               // 参数说明     dat            数据
+               // 返回参数     void
+               // 使用示例     imu660ra_write_register(IMU660RA_PWR_CONF, 0x00);                   // 关闭高级�
+             -�电模式
+               // 备注信息     内部调用
+               //-------------------------------------------------------------------------------------------------------
+             -------------
+               static void imu660ra_write_register(uint8 reg, uint8 dat)
+               {
+                   IMU660RA_CS(0);
+                   imu660ra_simspi_w_reg_byte(reg | IMU660RA_SPI_W, dat);
+                   IMU660RA_CS(1);
+               }
+               
+               //-------------------------------------------------------------------------------------------------------
+             -------------
+               // 函数简介     IMU660RA 写数据
+               // 参数说明     reg             寄存器地址
+               // 参数说明     dat            数据
+               // 返回参数     void
+               // 使用示例     imu660ra_write_registers(IMU660RA_INIT_dat, imu660ra_config_file, sizeof(imu660ra_con
+             -fig_file));
+               // 备注信息     内部调用
+               //-------------------------------------------------------------------------------------------------------
+             -------------
+               static void imu660ra_write_registers(uint8 reg, const uint8 *dat, uint32 len)
+               {
+                   IMU660RA_CS(0);
+C251 COMPILER V5.60.0,  SEEKFREE_IMU660RA                                                  04/12/23  16:30:44  PAGE 8   
+
+               
+                   imu660ra_simspi_w_reg_bytes(reg | IMU660RA_SPI_W, dat, len);
+                   IMU660RA_CS(1);
+               }
+               
+               //-------------------------------------------------------------------------------------------------------
+             -------------
+               // 函数简介     IMU660RA 读寄存器
+               // 参数说明     reg             寄存器地址
+               // 返回参数     uint8           数据
+               // 使用示例     imu660ra_read_register(IMU660RA_CHIP_ID);
+               // 备注信息     内部调用
+               //-------------------------------------------------------------------------------------------------------
+             -------------
+               static uint8 imu660ra_read_register(uint8 reg)
+               {
+                   uint8 dat[2];
+                   IMU660RA_CS(0);
+                   imu660ra_simspi_r_reg_bytes(reg | IMU660RA_SPI_R, dat, 2);
+                   IMU660RA_CS(1);
+                   return dat[1];
+               }
+               
+               //-------------------------------------------------------------------------------------------------------
+             -------------
+               // 函数简介     IMU660RA 读数据
+               // 参数说明     reg             寄存器地址
+               // 参数说明     dat            数据缓冲区
+               // 参数说明     len             数据长度
+               // 返回参数     void
+               // 使用示例     imu660ra_read_registers(IMU660RA_ACC_ADDRESS, dat, 6);
+               // 备注信息     内部调用
+               //-------------------------------------------------------------------------------------------------------
+             -------------
+               static void imu660ra_read_registers(uint8 reg, uint8 *dat, uint32 len)
+               {
+                   IMU660RA_CS(0);
+                   imu660ra_simspi_r_reg_bytes(reg | IMU660RA_SPI_R, dat, len);
+                 IMU660RA_CS(1);
+               }
+               #endif
+  457          
+  458          //-------------------------------------------------------------------------------------------------------
+             -------------
+  459          // 函数简介     IMU660RA 自检
+  460          // 参数说明     void
+  461          // 返回参数     uint8           1-自检失败 0-自检成功
+  462          // 使用示例     imu660ra_self_check();
+  463          // 备注信息     内部调用
+  464          //-------------------------------------------------------------------------------------------------------
+             -------------
+  465          static uint8 imu660ra_self_check (void)
+  466          {
+  467   1          uint8 dat = 0, return_state = 0;
+  468   1          uint16 timeout_count = 0;
+  469   1          do
+  470   1          {
+  471   2              if(timeout_count ++ > IMU660RA_TIMEOUT_COUNT)
+  472   2              {
+  473   3                  return_state =  1;
+  474   3                  break;
+  475   3              }
+  476   2              dat = imu660ra_read_register(IMU660RA_CHIP_ID);
+  477   2              delay_ms(1);
+  478   2          }while(0x24 != dat);                                                        // 读取设备ID是否�
+             -�于0X24，如果不是0X24则认为没检测到设备
+C251 COMPILER V5.60.0,  SEEKFREE_IMU660RA                                                  04/12/23  16:30:44  PAGE 9   
+
+  479   1          return return_state;
+  480   1      }
+  481          
+  482          //-------------------------------------------------------------------------------------------------------
+             -------------
+  483          // 函数简介     获取 IMU660RA 加速度计数据
+  484          // 参数说明     void
+  485          // 返回参数     void
+  486          // 使用示例     imu660ra_get_acc();                                             // 执行该函数后
+             -，直接查看对应的变量即可
+  487          // 备注信息     使用 SPI 的采集时间为69us
+  488          //             使用 IIC 的采集时间为126us        采集加速度计的时间与采集陀螺仪的
+             -时间一致的原因是都只是读取寄存器数据
+  489          //-------------------------------------------------------------------------------------------------------
+             -------------
+  490          void imu660ra_get_acc (void)
+  491          {
+  492   1      #if IMU660RA_USE_SOFT_IIC
+  493   1        uint8 dat[6];
+  494   1          imu660ra_read_registers(IMU660RA_ACC_ADDRESS, dat, 6);
+  495   1          imu660ra_acc_x = (int16)(((uint16)dat[1]<<8 | dat[0]));
+  496   1          imu660ra_acc_y = (int16)(((uint16)dat[3]<<8 | dat[2]));
+  497   1          imu660ra_acc_z = (int16)(((uint16)dat[5]<<8 | dat[4]));
+  498   1      #else
+                 // SPI读取第一个地址为空
+                 uint8 dat[7];
+                 imu660ra_read_registers(IMU660RA_ACC_ADDRESS, dat, 7);
+                   imu660ra_acc_x = (int16)(((uint16)dat[2]<<8 | dat[1]));
+                   imu660ra_acc_y = (int16)(((uint16)dat[4]<<8 | dat[3]));
+                   imu660ra_acc_z = (int16)(((uint16)dat[6]<<8 | dat[5]));
+               #endif
+  506   1      }
+  507          //-------------------------------------------------------------------------------------------------------
+             -------------
+  508          // 函数简介     获取 IMU660RA 陀螺仪数据
+  509          // 参数说明     void
+  510          // 返回参数     void
+  511          // 使用示例     imu660ra_get_gyro();                                            // 执行该函数后
+             -，直接查看对应的变量即可
+  512          // 备注信息     使用 SPI 的采集时间为69us
+  513          //             使用 IIC 的采集时间为126us
+  514          //-------------------------------------------------------------------------------------------------------
+             -------------
+  515          void imu660ra_get_gyro (void)
+  516          {
+  517   1      #if IMU660RA_USE_SOFT_IIC
+  518   1          uint8 dat[6];
+  519   1          imu660ra_read_registers(IMU660RA_GYRO_ADDRESS, dat, 6);
+  520   1          imu660ra_gyro_x = (int16)(((uint16)dat[1]<<8 | dat[0]));
+  521   1          imu660ra_gyro_y = (int16)(((uint16)dat[3]<<8 | dat[2]));
+  522   1          imu660ra_gyro_z = (int16)(((uint16)dat[5]<<8 | dat[4]));
+  523   1      #else
+                 // SPI读取第一个地址为空
+                 uint8 dat[7];
+                 imu660ra_read_registers(IMU660RA_GYRO_ADDRESS, dat, 7);
+                   imu660ra_gyro_x = (int16)(((uint16)dat[2]<<8 | dat[1]));
+                   imu660ra_gyro_y = (int16)(((uint16)dat[4]<<8 | dat[3]));
+                   imu660ra_gyro_z = (int16)(((uint16)dat[6]<<8 | dat[5]));
+               #endif
+  531   1      }
+  532          
+  533          //-------------------------------------------------------------------------------------------------------
+             -------------
+  534          // 函数简介     将 IMU660RA 加速度计数据转换为实际物理数据
+  535          // 参数说明     gyro_value      任意轴的加速度计数据
+  536          // 返回参数     void
+C251 COMPILER V5.60.0,  SEEKFREE_IMU660RA                                                  04/12/23  16:30:44  PAGE 10  
+
+  537          // 使用示例     float dat = imu660ra_acc_transition(imu660ra_acc_x);           // 单位为 g(m/s^2)
+  538          // 备注信息
+  539          //-------------------------------------------------------------------------------------------------------
+             -------------
+  540          float imu660ra_acc_transition (int16 acc_value)
+  541          {
+  542   1          float acc_dat = 0;
+  543   1          switch((uint8)IMU660RA_ACC_SAMPLE)
+  544   1          {
+  545   2              case 0x00: acc_dat = (float)acc_value / 16384; break;                  // 0x00 加速度计量程
+             -为:±2g     获取到的加速度计数据 除以 16384     可以转化为带物理单位的数据 单位：g(m/s^2)
+  546   2              case 0x01: acc_dat = (float)acc_value / 8192; break;                   // 0x01 加速度计量程
+             -为:±4g     获取到的加速度计数据 除以 8192      可以转化为带物理单位的数据 单位：g(m/s^2)
+  547   2              case 0x02: acc_dat = (float)acc_value / 4096; break;                   // 0x02 加速度计量程
+             -为:±8g     获取到的加速度计数据 除以 4096      可以转化为带物理单位的数据 单位：g(m/s^2)
+  548   2              case 0x03: acc_dat = (float)acc_value / 2048; break;                   // 0x03 加速度计量程
+             -为:±16g    获取到的加速度计数据 除以 2048      可以转化为带物理单位的数据 单位：g(m/s^2)
+  549   2              default: break;
+  550   2          }
+  551   1          return acc_dat;
+  552   1      }
+  553          
+  554          //-------------------------------------------------------------------------------------------------------
+             -------------
+  555          // 函数简介     将 IMU660RA 陀螺仪数据转换为实际物理数据
+  556          // 参数说明     gyro_value      任意轴的陀螺仪数据
+  557          // 返回参数     void
+  558          // 使用示例     float dat = imu660ra_gyro_transition(imu660ra_gyro_x);         // 单位为°/s
+  559          // 备注信息
+  560          //-------------------------------------------------------------------------------------------------------
+             -------------
+  561          float imu660ra_gyro_transition (int16 gyro_value)
+  562          {
+  563   1          float gyro_dat = 0;
+  564   1          switch(IMU660RA_GYR_SAMPLE)
+  565   1          {
+  566   2              case 0x00: gyro_dat = (float)gyro_value / 16.4f;  break;               //  0x00 陀螺仪量程�
+             -�:±2000dps    获取到的陀螺仪数据除以 16.4    可以转化为带物理单位的数据 单位为：°/s
+  567   2              case 0x01: gyro_dat = (float)gyro_value / 32.8f;  break;               //  0x01 陀螺仪量程�
+             -�:±1000dps    获取到的陀螺仪数据除以 32.8    可以转化为带物理单位的数据 单位为：°/s
+  568   2              case 0x02: gyro_dat = (float)gyro_value / 65.6f;  break;               //  0x02 陀螺仪量程�
+             -�:±500 dps    获取到的陀螺仪数据除以 65.6    可以转化为带物理单位的数据 单位为：°/s
+  569   2              case 0x03: gyro_dat = (float)gyro_value / 131.2f; break;               //  0x03 陀螺仪量程�
+             -�:±250 dps    获取到的陀螺仪数据除以 131.2   可以转化为带物理单位的数据 单位为：°/s
+  570   2              case 0x04: gyro_dat = (float)gyro_value / 262.4f; break;               //  0x04 陀螺仪量程�
+             -�:±125 dps    获取到的陀螺仪数据除以 262.4   可以转化为带物理单位的数据 单位为：°/s
+  571   2              default: break;
+  572   2          }
+  573   1          return gyro_dat;
+  574   1      }
+  575          
+  576          //-------------------------------------------------------------------------------------------------------
+             -------------
+  577          // 函数简介     初始化 IMU660RA
+  578          // 参数说明     void
+  579          // 返回参数     uint8           1-初始化失败 0-初始化成功
+  580          // 使用示例     imu660ra_init();
+  581          // 备注信息
+  582          //-------------------------------------------------------------------------------------------------------
+             -------------
+  583          uint8 imu660ra_init (void)
+  584          {
+  585   1          uint8 return_state = 0;
+  586   1        
+  587   1          delay_ms(20);                                                           // 等待设备上电成功
+  588   1      
+C251 COMPILER V5.60.0,  SEEKFREE_IMU660RA                                                  04/12/23  16:30:44  PAGE 11  
+
+  589   1      //#if IMU660RA_USE_SOFT_IIC 
+  590   1      
+  591   1      //#else
+  592   1      //  imu660ra_read_register(IMU660RA_CHIP_ID);                                   // 读取一下设备ID �
+             -�设备设置为SPI模式
+  593   1      //  imu660ra_read_register(IMU660RA_CHIP_ID);                                   // 读取一下设备ID �
+             -�设备设置为SPI模式
+  594   1      //  imu660ra_read_register(IMU660RA_CHIP_ID);                                   // 读取一下设备ID �
+             -�设备设置为SPI模式
+  595   1      
+  596   1      //#endif
+  597   1        
+  598   1          do{
+  599   2              if(imu660ra_self_check())                                               // IMU660RA 自检
+  600   2              {
+  601   3                  // 如果程序在输出了断言信息 并且提示出错位置在这里
+  602   3                  // 那么就是 IMU660RA 自检出错并超时退出了
+  603   3                  // 检查一下接线有没有问题 如果没问题可能就是坏了
+  604   3            while(1)
+  605   3            {
+  606   4              printf("imu660ra self check error.\r\n");
+  607   4              delay_ms(200);
+  608   4            };
+  609   3                  return_state = 1;
+  610   3                  //break;
+  611   3              }
+  612   2      
+  613   2              imu660ra_write_register(IMU660RA_PWR_CONF, 0x00);                       // 关闭高级省电模�
+             -��
+  614   2              delay_ms(10);
+  615   2              imu660ra_write_register(IMU660RA_INIT_CTRL, 0x00);                      // 开始对模块进行�
+             -��始化配置
+  616   2              imu660ra_write_registers(IMU660RA_INIT_DATA, imu660ra_config_file, sizeof(imu660ra_config_file));
+             -   // 输出配置文件
+  617   2              imu660ra_write_register(IMU660RA_INIT_CTRL, 0x01);                      // 初始化配置结束
+  618   2              delay_ms(20);
+  619   2              if(imu660ra_read_register(IMU660RA_INT_STA) == 0)                       // 检查是否配置完�
+             -��
+  620   2              {
+  621   3                  // 如果程序在输出了断言信息 并且提示出错位置在这里
+  622   3                  // 那么就是 IMU660RA 配置初始化文件出错了
+  623   3                  // 检查一下接线有没有问题 如果没问题可能就是坏了
+  624   3      //      while(1)
+  625   3      //      {
+  626   3              printf("imu660ra init error.\r\n");
+  627   3      //        delay_ms(200);
+  628   3      //      }
+  629   3                  return_state = 1;
+  630   3                  //break;
+  631   3              }
+  632   2              imu660ra_write_register(IMU660RA_PWR_CTRL, 0x0E);                       // 开启性能模式  �
+             -�能陀螺仪、加速度、温度传感器
+  633   2              imu660ra_write_register(IMU660RA_ACC_CONF, 0xA7);                       // 加速度采集配置 
+             -性能模式 正常采集 50Hz  采样频率
+  634   2              imu660ra_write_register(IMU660RA_GYR_CONF, 0xA9);                       // 陀螺仪采集配置 
+             -性能模式 正常采集 200Hz 采样频率
+  635   2          
+  636   2              imu660ra_write_register(IMU660RA_ACC_RANGE, IMU660RA_ACC_SAMPLE);       // 加速度量程配置 
+             -配置量程为:±8g
+  637   2          // IMU660RA_ACC_SAMPLE 寄存器
+  638   2              // 设置为:0x00 陀螺仪量程为:±2000dps     获取到的陀螺仪数据 除以 16.4       
+             -可以转化为带物理单位的数据 单位为：°/s
+  639   2              // 设置为:0x01 陀螺仪量程为:±1000dps     获取到的陀螺仪数据 除以 32.8       
+             -可以转化为带物理单位的数据 单位为：°/s
+  640   2              // 设置为:0x02 陀螺仪量程为:±500 dps     获取到的陀螺仪数据 除以 65.6       
+             -可以转化为带物理单位的数据 单位为：°/s
+C251 COMPILER V5.60.0,  SEEKFREE_IMU660RA                                                  04/12/23  16:30:44  PAGE 12  
+
+  641   2              // 设置为:0x03 陀螺仪量程为:±250 dps     获取到的陀螺仪数据 除以 131.2      
+             -可以转化为带物理单位的数据 单位为：°/s
+  642   2              // 设置为:0x04 陀螺仪量程为:±125 dps     获取到的陀螺仪数据 除以 262.4      
+             -可以转化为带物理单位的数据 单位为：°/s
+  643   2          
+  644   2              imu660ra_write_register(IMU660RA_GYR_RANGE, IMU660RA_GYR_SAMPLE);       // 陀螺仪量程配置 
+             -配置量程为:±2000dps
+  645   2              // IMU660RA_GYR_RANGE 寄存器
+  646   2              // 设置为:0x00 加速度计量程为:±2g         获取到的加速度计数据 除以 16384 
+             -  可以转化为带物理单位的数据 单位：g(m/s^2)
+  647   2              // 设置为:0x01 加速度计量程为:±4g         获取到的加速度计数据 除以 8192  
+             -  可以转化为带物理单位的数据 单位：g(m/s^2)
+  648   2              // 设置为:0x02 加速度计量程为:±8g         获取到的加速度计数据 除以 4096  
+             -  可以转化为带物理单位的数据 单位：g(m/s^2)
+  649   2              // 设置为:0x03 加速度计量程为:±16g        获取到的加速度计数据 除以 2048  
+             -  可以转化为带物理单位的数据 单位：g(m/s^2)
+  650   2          
+  651   2        }while(0);
+  652   1          return return_state;
+  653   1      }
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =      1354     ------
+  ecode size           =    ------     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =    ------     ------
+  xdata-const size     =    ------     ------
+  edata size           =        77     ------
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =        88     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
